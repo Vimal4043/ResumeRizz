@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ResumeRizz</title>
+    <script>
+      // Apply the saved theme (dark is the default) before anything paints
+      // so there is never a flash of light theme on load.
+      (function () {
+        var theme = "dark";
+        try {
+          var stored = localStorage.getItem("theme");
+          if (stored === "light" || stored === "dark") theme = stored;
+        } catch (e) {
+          /* localStorage unavailable — fall back to dark */
+        }
+        document.documentElement.classList.toggle("dark", theme === "dark");
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

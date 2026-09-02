@@ -9,7 +9,7 @@ export default function NotFound() {
         <p className="text-6xl" aria-hidden="true">
           404
         </p>
-        <p className="text-slate-500">
+        <p className="text-text-muted">
           The page you’re looking for doesn’t exist or has moved.
         </p>
         <Link to="/">

@@ -17,6 +17,108 @@
   --color-brand-900: #4c1d95;
 }
 
+/* ============================================================
+   Centralized theme tokens. Light theme is :root; the dark
+   theme lives on html.dark and is the application default
+   (applied by an inline script in index.html before React
+   mounts, so there is never a flash of light theme).
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --bg: #f6f6f8;
+  --surface: #ffffff;
+  --surface-elevated: #f1f1f5;
+  --border: #e3e5ea;
+
+  /* Text */
+  --text-primary: #1e2430;
+  --text-secondary: #4b5565;
+  --text-muted: #7c8695;
+
+  /* Primary (violet) */
+  --primary: #6d28d9;
+  --primary-hover: #5b21b6;
+  --primary-soft: #ede9fe;
+
+  /* Semantic feedback */
+  --success: #059669;
+  --success-soft: rgba(5, 150, 105, 0.12);
+  --success-text: #047857;
+  --warning: #d97706;
+  --warning-soft: rgba(217, 119, 6, 0.12);
+  --warning-text: #b45309;
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+  --danger-text: #b91c1c;
+  --info: #2563eb;
+  --info-soft: rgba(37, 99, 235, 0.1);
+  --info-text: #1d4ed8;
+}
+
+html.dark {
+  color-scheme: dark;
+
+  /* Surfaces — deep neutral slate, never pure black */
+  --bg: #101218;
+  --surface: #181c25;
+  --surface-elevated: #202531;
+  --border: #2b3140;
+
+  /* Text */
+  --text-primary: #e8eaf0;
+  --text-secondary: #a4adbd;
+  --text-muted: #727b8c;
+
+  /* Primary — lighter violet for dark-surface contrast */
+  --primary: #a78bfa;
+  --primary-hover: #c4b5fd;
+  --primary-soft: rgba(139, 92, 246, 0.16);
+
+  /* Semantic feedback */
+  --success: #34d399;
+  --success-soft: rgba(52, 211, 153, 0.14);
+  --success-text: #6ee7b7;
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.14);
+  --warning-text: #fcd34d;
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.14);
+  --danger-text: #fca5a5;
+  --info: #60a5fa;
+  --info-soft: rgba(96, 165, 250, 0.14);
+  --info-text: #93c5fd;
+}
+
+/* Expose the tokens as Tailwind utilities (bg-surface, text-text-muted,
+   border-border, bg-danger-soft, ...) so components never hardcode colors. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-text: var(--success-text);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-text: var(--warning-text);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-text: var(--danger-text);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-text: var(--info-text);
+}
+
 html,
 body,
 #root {
@@ -24,5 +126,51 @@ body,
 }
 
 body {
-  @apply bg-slate-50 font-sans text-slate-800 antialiased;
+  background: var(--bg);
+  color: var(--text-primary);
+  @apply font-sans antialiased;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+/* Keep browser defaults from punching white holes in dark mode. */
+input,
+textarea,
+select {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+/* Subtle theme-switch transition for background, text, and borders only.
+   Fully disabled for users who prefer reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  body,
+  header,
+  footer,
+  main,
+  section,
+  div,
+  li,
+  a,
+  button,
+  input,
+  textarea,
+  span,
+  p,
+  h1,
+  h2,
+  h3 {
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease;
+  }
 }

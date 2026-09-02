@@ -16,6 +16,32 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { fetchAnalysisById } from "../services/analysisService.js";
 import { getErrorMessage } from "../services/api.js";
 
+function formatDate(iso) {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
+
+/** Metadata row for the saved-analysis details panel. */
+function DetailRow({ label, value }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
+      <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-text-muted">
+        {label}
+      </span>
+      <span className="min-w-0 truncate text-sm text-text-primary" title={value}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 /**
  * Renders the real analysis returned by the backend.
  *
@@ -34,6 +60,7 @@ export default function AnalysisResult() {
   const routedResult = location.state?.result ?? null;
 
   const [result, setResult] = useState(routedResult);
+  const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(Boolean(id) && !routedResult);
   const [error, setError] = useState("");
 
@@ -44,8 +71,11 @@ export default function AnalysisResult() {
     (async () => {
       try {
         const data = await fetchAnalysisById(id);
-        // Backend returns { id, jobTitle, jobDescription, matchScore, analysis, ... }
+        // Backend returns { id, jobTitle, jobDescription, matchScore, analysis,
+        // resumeName, createdAt } — `analysis` holds the report itself, the rest
+        // is metadata shown in the details panel.
         setResult(data.analysis ?? data);
+        setMeta(data);
       } catch (err) {
         if (!cancelled) setError(getErrorMessage(err, "Could not load this analysis."));
       } finally {
@@ -75,7 +105,7 @@ export default function AnalysisResult() {
         {error && (
           <div
             role="alert"
-            className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+            className="mb-4 rounded-lg border border-danger/40 bg-danger-soft px-4 py-3 text-sm text-danger-text"
           >
             {error}
           </div>
@@ -138,21 +168,46 @@ export default function AnalysisResult() {
         />
       ) : (
         <div className="space-y-6">
+          {isSavedView && meta && (
+            <section
+              aria-label="Analysis details"
+              className="rounded-xl border border-border bg-surface p-5"
+            >
+              <h2 className="text-sm font-semibold text-text-primary">
+                Analysis details
+              </h2>
+              <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+                <DetailRow
+                  label="Job"
+                  value={meta.jobTitle || "Untitled role"}
+                />
+                <DetailRow
+                  label="Resume"
+                  value={meta.resumeName || "Unknown file"}
+                />
+                <DetailRow
+                  label="Analyzed"
+                  value={meta.createdAt ? formatDate(meta.createdAt) : "—"}
+                />
+              </dl>
+            </section>
+          )}
+
           {savedToAccount && (
             <div
               role="status"
-              className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+              className="rounded-lg border border-success/40 bg-success-soft px-4 py-3 text-sm text-success-text"
             >
               ✓ Analysis saved to your account.
             </div>
           )}
 
           {!savedToAccount && !isSavedView && (
-            <div className="rounded-lg border border-brand-200 bg-brand-50 p-5">
-              <p className="font-semibold text-slate-900">
+            <div className="rounded-lg border border-primary/40 bg-primary-soft p-5">
+              <p className="font-semibold text-text-primary">
                 {user ? "Save this analysis" : "Save this analysis"}
               </p>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-text-secondary">
                 {user
                   ? "Your results weren't saved automatically. Please try the analysis again."
                   : "Create a free account to save this analysis and access it later."}
@@ -164,7 +219,7 @@ export default function AnalysisResult() {
                   </Link>
                   <Link
                     to="/login"
-                    className="text-sm font-medium text-brand-700 hover:underline"
+                    className="text-sm font-medium text-primary hover:underline"
                   >
                     Log in
                   </Link>

@@ -69,11 +69,11 @@ export default function ResumeUploader({
 
   function pickerClass() {
     const base =
-      "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 focus:ring-offset-2";
+      "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2";
     if (disabled) return `${base} cursor-not-allowed opacity-60`;
-    if (dragOver) return `${base} border-brand-600 bg-brand-50`;
-    if (showError) return `${base} border-red-300 bg-red-50/40`;
-    return `${base} border-slate-300 bg-white hover:border-brand-600`;
+    if (dragOver) return `${base} border-primary bg-primary-soft`;
+    if (showError) return `${base} border-danger/40 bg-danger-soft/40`;
+    return `${base} border-border bg-surface hover:border-primary`;
   }
 
   return (
@@ -99,19 +99,19 @@ export default function ResumeUploader({
           className={pickerClass()}
         >
           <span
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-2xl"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-2xl"
             aria-hidden="true"
           >
             📄
           </span>
           <div className="space-y-1">
-            <p className="text-sm font-medium text-slate-700">
+            <p className="text-sm font-medium text-text-secondary">
               Drag and drop your resume, or{" "}
-              <span className="text-brand-700 underline underline-offset-2">
+              <span className="text-primary underline underline-offset-2">
                 browse
               </span>
             </p>
-            <p className="text-xs text-slate-400">PDF only · Maximum 5 MB</p>
+            <p className="text-xs text-text-muted">PDF only · Maximum 5 MB</p>
           </div>
           <input
             ref={inputRef}
@@ -126,21 +126,21 @@ export default function ResumeUploader({
           />
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
           <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-xl"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-xl"
             aria-hidden="true"
           >
             📎
           </span>
           <div className="min-w-0 flex-1">
             <p
-              className="truncate text-sm font-medium text-slate-700"
+              className="truncate text-sm font-medium text-text-secondary"
               title={file.name}
             >
               {file.name}
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-text-muted">
               {formatFileSize(file.size)}
             </p>
           </div>
@@ -149,7 +149,7 @@ export default function ResumeUploader({
               type="button"
               onClick={clearFile}
               disabled={disabled}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               Remove
             </button>
@@ -157,7 +157,7 @@ export default function ResumeUploader({
               type="button"
               onClick={openPicker}
               disabled={disabled}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               Change file
             </button>
@@ -176,7 +176,7 @@ export default function ResumeUploader({
         </div>
       )}
       {showError && (
-        <p role="alert" className="text-xs font-medium text-red-600">
+        <p role="alert" className="text-xs font-medium text-danger-text">
           {validationError || requiredError}
         </p>
       )}

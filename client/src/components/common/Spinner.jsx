@@ -7,7 +7,7 @@ export default function Spinner({ size = "md", className = "" }) {
 
   return (
     <svg
-      className={`animate-spin text-brand-700 ${sizes[size]} ${className}`}
+      className={`animate-spin text-primary ${sizes[size]} ${className}`}
       viewBox="0 0 24 24"
       fill="none"
       role="status"

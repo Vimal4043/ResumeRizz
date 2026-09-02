@@ -12,9 +12,9 @@ import { getErrorMessage } from "../services/api.js";
 
 /** Score → tailwind color classes (honest, non-alarmist palette). */
 function scoreClasses(score) {
-  if (score >= 75) return "bg-emerald-100 text-emerald-800";
-  if (score >= 50) return "bg-amber-100 text-amber-800";
-  return "bg-rose-100 text-rose-800";
+  if (score >= 75) return "bg-success-soft text-success-text";
+  if (score >= 50) return "bg-warning-soft text-warning-text";
+  return "bg-danger-soft text-danger-text";
 }
 
 function formatDate(iso) {
@@ -112,7 +112,7 @@ export default function Dashboard() {
       {state.error && (
         <div
           role="alert"
-          className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+          className="mb-4 rounded-lg border border-danger/40 bg-danger-soft px-4 py-3 text-sm text-danger-text"
         >
           {state.error}
         </div>
@@ -135,7 +135,7 @@ export default function Dashboard() {
         />
       ) : (
         <>
-          <ul className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
             {state.items.map((a) => (
               <li
                 key={a.id}
@@ -151,16 +151,16 @@ export default function Dashboard() {
                 <div className="min-w-0 flex-1">
                   <Link
                     to={`/analysis/${a.id}`}
-                    className="block truncate font-medium text-slate-900 hover:text-indigo-600"
+                    className="block truncate font-medium text-text-primary hover:text-primary"
                   >
                     {a.jobTitle || "Untitled role"}
                   </Link>
-                  <p className="truncate text-xs text-slate-500">
+                  <p className="truncate text-xs text-text-muted">
                     {formatDate(a.createdAt)}
                     {a.resumeName ? ` · ${a.resumeName}` : ""}
                   </p>
                   {a.matchSummary && (
-                    <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+                    <p className="mt-1 line-clamp-2 text-sm text-text-secondary">
                       {a.matchSummary}
                     </p>
                   )}
@@ -174,7 +174,7 @@ export default function Dashboard() {
                     type="button"
                     onClick={() => handleDelete(a.id)}
                     disabled={state.deletingId === a.id}
-                    className="rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                    className="rounded-lg px-3 py-2 text-sm font-medium text-danger-text hover:bg-danger-soft disabled:opacity-50"
                   >
                     {state.deletingId === a.id ? "Deleting…" : "Delete"}
                   </button>
@@ -192,7 +192,7 @@ export default function Dashboard() {
               >
                 ← Previous
               </Button>
-              <span className="text-slate-500">
+              <span className="text-text-muted">
                 Page {state.page} of {state.totalPages}
               </span>
               <Button

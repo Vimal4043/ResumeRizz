@@ -69,7 +69,7 @@ export default function AnalyzeResume() {
       subtitle="Upload your resume, paste a job description, and get an honest match analysis you can act on."
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-8">
-        <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6">
+        <div className="space-y-6 rounded-xl border border-border bg-surface p-6">
           <ResumeUploader
             file={file}
             onChange={handleFileChange}
@@ -87,11 +87,11 @@ export default function AnalyzeResume() {
         {status === "error" && error && (
           <div
             role="alert"
-            className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            className="rounded-md border border-danger/40 bg-danger-soft px-4 py-3 text-sm text-danger-text"
           >
             <p className="font-semibold">We couldn’t complete the analysis.</p>
             <p className="mt-1">{error}</p>
-            <p className="mt-1 text-xs text-red-600">
+            <p className="mt-1 text-xs text-danger-text">
               Check that your PDF has selectable text and your job description
               is complete, then try again.
             </p>
@@ -99,7 +99,7 @@ export default function AnalyzeResume() {
         )}
 
         <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-text-muted">
             {!hasValidFile && "Select a PDF resume. "}
             {!hasValidJobDescription && "Add a fuller job description. "}
             {hasValidFile && hasValidJobDescription && "Ready to analyze."}

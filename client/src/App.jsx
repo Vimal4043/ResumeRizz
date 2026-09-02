@@ -17,8 +17,10 @@ function AppLayout() {
       <main className="flex-1">
         <Outlet />
       </main>
-      <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-400">
-        ResumeRizz
+      <footer className="border-t border-border py-4 text-center text-xs text-text-muted">
+        Made with ❤️ by <a href="https://github.com/Vimal4043" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+          Vimal
+        </a>
       </footer>
     </div>
   );

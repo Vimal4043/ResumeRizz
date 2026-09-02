@@ -1,8 +1,8 @@
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
 const PRIORITY_STYLES = {
-  high: { badge: "bg-red-100 text-red-700", label: "High" },
-  medium: { badge: "bg-amber-100 text-amber-700", label: "Medium" },
-  low: { badge: "bg-slate-100 text-slate-600", label: "Low" },
+  high: { badge: "bg-danger-soft text-danger-text", label: "High" },
+  medium: { badge: "bg-warning-soft text-warning-text", label: "Medium" },
+  low: { badge: "bg-surface-elevated text-text-secondary", label: "Low" },
 };
 
 /**
@@ -18,9 +18,9 @@ export default function ResumeIssues({ issues = [] }) {
   );
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-6">
-      <h2 className="text-lg font-semibold text-slate-900">Resume Issues</h2>
-      <p className="mt-1 text-sm text-slate-500">
+    <section className="rounded-xl border border-border bg-surface p-6">
+      <h2 className="text-lg font-semibold text-text-primary">Resume Issues</h2>
+      <p className="mt-1 text-sm text-text-muted">
         Things that weaken your resume for this specific role.
       </p>
 
@@ -29,10 +29,10 @@ export default function ResumeIssues({ issues = [] }) {
           const priority =
             PRIORITY_STYLES[item.priority] ?? PRIORITY_STYLES.low;
           return (
-            <li key={index} className="border-l-2 border-slate-200 pl-4">
+            <li key={index} className="border-l-2 border-border pl-4">
               <div className="flex flex-wrap items-center gap-2">
                 {item.section && (
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                  <span className="rounded bg-surface-elevated px-2 py-0.5 text-xs font-medium text-text-muted">
                     {item.section}
                   </span>
                 )}
@@ -42,12 +42,12 @@ export default function ResumeIssues({ issues = [] }) {
                   {priority.label} priority
                 </span>
               </div>
-              <p className="mt-2 text-sm font-medium text-slate-800">
+              <p className="mt-2 text-sm font-medium text-text-primary">
                 {item.issue}
               </p>
               {item.recommendation && (
-                <p className="mt-1 text-sm leading-relaxed text-slate-500">
-                  <span className="font-medium text-slate-700">
+                <p className="mt-1 text-sm leading-relaxed text-text-muted">
+                  <span className="font-medium text-text-secondary">
                     Recommendation:
                   </span>{" "}
                   {item.recommendation}

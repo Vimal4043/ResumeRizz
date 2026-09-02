@@ -50,10 +50,10 @@ export default function Register() {
     >
       <form
         onSubmit={handleSubmit}
-        className="mx-auto w-full max-w-sm space-y-4 rounded-lg border border-slate-200 bg-white p-6"
+        className="mx-auto w-full max-w-sm space-y-4 rounded-lg border border-border bg-surface p-6"
       >
         {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">
             {error}
           </p>
         )}
@@ -93,9 +93,9 @@ export default function Register() {
         <Button type="submit" loading={loading} className="w-full">
           Create account
         </Button>
-        <p className="text-center text-sm text-slate-500">
+        <p className="text-center text-sm text-text-muted">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-brand-700">
+          <Link to="/login" className="font-medium text-primary">
             Log in
           </Link>
         </p>

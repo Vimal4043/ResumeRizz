@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/errors.js";
 
-const TOKEN_TTL = "7d";
+const TOKEN_TTL = "31d";
 
 /**
  * Sign an access token for a user.

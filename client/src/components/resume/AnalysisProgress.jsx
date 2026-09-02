@@ -12,12 +12,12 @@ export default function AnalysisProgress({
   stage = 0,
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-8 sm:p-12">
+    <div className="rounded-xl border border-border bg-surface p-8 sm:p-12">
       <div className="mx-auto flex max-w-md flex-col items-center gap-6 text-center">
         <Spinner size="lg" />
         <div aria-live="polite">
-          <p className="text-sm font-medium text-slate-700">{message}</p>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="text-sm font-medium text-text-secondary">{message}</p>
+          <p className="mt-1 text-xs text-text-muted">
             This typically takes up to a minute.
           </p>
         </div>
@@ -30,20 +30,20 @@ export default function AnalysisProgress({
                 <span
                   className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                     active
-                      ? "bg-brand-700 text-white"
-                      : "bg-slate-100 text-slate-400"
+                      ? "bg-primary text-white"
+                      : "bg-surface-elevated text-text-muted"
                   }`}
                 >
                   {index + 1}
                 </span>
                 <span
-                  className={`text-sm ${active ? "font-medium text-slate-800" : "text-slate-400"}`}
+                  className={`text-sm ${active ? "font-medium text-text-primary" : "text-text-muted"}`}
                 >
                   {step}
                 </span>
                 {active && (
                   <span
-                    className="ml-auto h-1.5 w-1.5 animate-pulse rounded-full bg-brand-700"
+                    className="ml-auto h-1.5 w-1.5 animate-pulse rounded-full bg-primary"
                     aria-hidden="true"
                   />
                 )}

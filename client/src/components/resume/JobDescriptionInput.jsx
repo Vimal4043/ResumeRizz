@@ -21,7 +21,7 @@ export default function JobDescriptionInput({
     <div className="flex flex-col gap-1.5">
       <label
         htmlFor="job-description"
-        className="text-sm font-medium text-slate-700"
+        className="text-sm font-medium text-text-secondary"
       >
         Job Description
       </label>
@@ -36,24 +36,24 @@ export default function JobDescriptionInput({
         }
         className={`w-full resize-y rounded-md border px-3 py-2 text-sm leading-6 transition-colors focus:outline-none focus:ring-1 ${
           showError
-            ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-            : "border-slate-300 focus:border-brand-700 focus:ring-brand-700"
+            ? "border-danger focus:border-danger focus:ring-danger"
+            : "border-border focus:border-primary focus:ring-primary"
         }`}
       />
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1">
           {error && (
-            <p role="alert" className="text-xs font-medium text-red-600">
+            <p role="alert" className="text-xs font-medium text-danger-text">
               {error}
             </p>
           )}
           {!error && requiredError && (
-            <p role="alert" className="text-xs font-medium text-red-600">
+            <p role="alert" className="text-xs font-medium text-danger-text">
               {requiredError}
             </p>
           )}
           {!error && !requiredError && belowMin && (
-            <p role="alert" className="text-xs font-medium text-red-600">
+            <p role="alert" className="text-xs font-medium text-danger-text">
               Job description is a little short — add at least{" "}
               {MIN_JOB_DESCRIPTION_LENGTH} characters.
             </p>
@@ -62,10 +62,10 @@ export default function JobDescriptionInput({
         <p
           className={`shrink-0 text-xs ${
             overMin
-              ? "text-slate-400"
+              ? "text-text-muted"
               : belowMin
-                ? "text-red-600"
-                : "text-slate-400"
+                ? "text-danger-text"
+                : "text-text-muted"
           }`}
         >
           {length.toLocaleString()} characters
