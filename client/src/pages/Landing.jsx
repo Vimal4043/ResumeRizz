@@ -11,7 +11,7 @@ export default function Landing() {
         <span className="text-brand-700">AI screening</span>
       </h1>
       <p className="mt-4 max-w-2xl text-lg text-slate-500">
-        Upload a PDF resume and a job description. AI Job Hunt compares them and
+        Upload a PDF resume and a job description. ResumeRizz compares them and
         gives you actionable suggestions to improve your match.
       </p>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">

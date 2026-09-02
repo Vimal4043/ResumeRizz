@@ -18,7 +18,7 @@ function AppLayout() {
         <Outlet />
       </main>
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-400">
-        AI Job Hunt
+        ResumeRizz
       </footer>
     </div>
   );

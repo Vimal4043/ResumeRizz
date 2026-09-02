@@ -29,7 +29,7 @@ export default function Navbar() {
           to={user ? "/dashboard" : "/"}
           className="flex items-center gap-2 text-lg font-bold text-brand-700"
         >
-          <span aria-hidden="true">🎯</span> AI Job Hunt
+          <span aria-hidden="true">📄</span> ResumeRizz
         </Link>
         <nav className="flex items-center gap-4">
           {navLinks.map((link) => (

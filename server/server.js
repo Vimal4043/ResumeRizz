@@ -15,7 +15,7 @@ async function start() {
     // Bind to 0.0.0.0 so the render web service (and any reverse proxy) can
     // reach the API, not just a loopback-only localhost listener.
     const server = app.listen(env.port, "0.0.0.0", () => {
-      logger.info(`AI Job Hunt API listening on port ${env.port}`);
+      logger.info(`ResumeRizz API listening on port ${env.port}`);
       logger.info(`Environment: ${env.nodeEnv}`);
     });
 

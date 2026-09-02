@@ -1,6 +1,6 @@
-# AI Job Hunt
+# ResumeRizz
 
-AI Job Hunt analyzes a PDF resume against a job description and returns a structured,
+ResumeRizz analyzes a PDF resume against a job description and returns a structured,
 evidence-based job-match report. It extracts and structures the resume on the server,
 parses the job description, runs the comparison through the Gemini API, validates the
 result, and presents actionable feedback in a clean React UI.
@@ -34,7 +34,7 @@ description parsing → Gemini analysis → validation/normalization → a React
 ## Project structure
 
 ```
-ai-job-hunt/
+resume-rizz/
 ├── client/                 # React SPA (Vite)
 │   └── src/
 │       ├── components/     # common/, layout/, resume/

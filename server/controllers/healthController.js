@@ -4,7 +4,7 @@ import { env } from "../config/env.js";
 export function getHealth(_req, res) {
   return res.status(200).json({
     success: true,
-    message: "AI Job Hunt API is running",
+    message: "ResumeRizz API is running",
     environment: env.nodeEnv,
   });
 }
