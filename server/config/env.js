@@ -25,11 +25,22 @@ export const env = {
   // Token lifetime. 7 days is a reasonable default for a web app; tokens are
   // held in memory/localStorage client-side, never in URLs.
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  // How many anonymous (unauthenticated) analyses one IP may run per rolling
-  // 15-minute window. Generous enough to test comfortably, tight enough to
-  // blunt obvious abuse of the free AI API. Authenticated users are instead
-  // governed by the global API limiter.
-  guestAnalysisLimit: Number(process.env.GUEST_ANALYSIS_LIMIT) || 5,
+  // Application-level analysis quota temporarily disabled.
+  // Re-enable after monitoring real usage and establishing production limits.
+  // Restore these fields together with the limiters in routes/analysisRoutes.js:
+  //   guestAnalysisLimit: Number(process.env.GUEST_ANALYSIS_LIMIT) || 5,
+  //   guestAnalysisWindowMs:
+  //     (Number(process.env.GUEST_ANALYSIS_WINDOW_MINUTES) || 15) * 60 * 1000,
+  //   authAnalysisLimit: Number(process.env.AUTH_ANALYSIS_LIMIT) || 30,
+  //   authAnalysisWindowMs:
+  //     (Number(process.env.AUTH_ANALYSIS_WINDOW_HOURS) || 24) * 60 * 60 * 1000,
+  // Hard ceiling for one Gemini call. Past this, the request is aborted and a
+  // clean timeout error is returned instead of hanging.
+  aiTimeoutMs: Number(process.env.AI_TIMEOUT_MS) || 120_000,
+  // Maximum accepted job-description length (defends the AI prompt + DB).
+  maxJobDescriptionLength: Number(process.env.MAX_JOB_DESCRIPTION_LENGTH) || 20_000,
+  // Maximum accepted resume upload size (multer + frontend stay in sync).
+  maxUploadBytes: Number(process.env.MAX_UPLOAD_MB) * 1024 * 1024 || 5 * 1024 * 1024,
   uploadsDir: path.join(projectRoot, "uploads"),
 };
 

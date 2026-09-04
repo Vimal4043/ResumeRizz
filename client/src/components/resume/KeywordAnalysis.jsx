@@ -18,7 +18,9 @@ export default function KeywordAnalysis({ analysis = {} }) {
 
       <div className="mt-5 grid gap-6 md:grid-cols-2">
         <div>
-          <h3 className="text-sm font-semibold text-success-text">Matched</h3>
+          <h3 className="text-sm font-semibold text-success-text">
+            Matched keywords
+          </h3>
           {matched.length === 0 ? (
             <p className="mt-2 text-sm text-text-muted">No matching keywords.</p>
           ) : (
@@ -35,7 +37,9 @@ export default function KeywordAnalysis({ analysis = {} }) {
           )}
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-danger-text">Missing</h3>
+          <h3 className="text-sm font-semibold text-danger-text">
+            Missing keywords
+          </h3>
           {missing.length === 0 ? (
             <p className="mt-2 text-sm text-text-muted">No missing keywords.</p>
           ) : (

@@ -56,9 +56,10 @@ export default function BulletSuggestions({ suggestions = [] }) {
                     <button
                       type="button"
                       onClick={() => copy(item.suggestion, index)}
+                      aria-label={`Copy suggestion${item.section ? ` for ${item.section}` : ""}`}
                       className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
                     >
-                      {copiedIndex === index ? "Copied ✓" : "Copy"}
+                      {copiedIndex === index ? "Copied ✓" : "Copy suggestion"}
                     </button>
                   )}
                 </div>
@@ -74,8 +75,10 @@ export default function BulletSuggestions({ suggestions = [] }) {
               </div>
             </div>
             {item.reason && (
-              <p className="mt-3 border-t border-border pt-2 text-sm text-text-muted">
-                <span className="font-medium text-text-secondary">Why:</span>{" "}
+              <p className="mt-3 border-t border-border pt-2 text-sm text-text-secondary">
+                <span className="font-medium text-text-primary">
+                  Why this helps:
+                </span>{" "}
                 {item.reason}
               </p>
             )}

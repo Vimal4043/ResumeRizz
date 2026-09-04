@@ -6,7 +6,8 @@
  * Covers the parts that do NOT require a live Gemini call or a completed run:
  *   - POST /api/analysis is public (401 no longer returned for guests).
  *   - Authenticated-only routes (/history, /:id GET/DELETE) stay protected.
- *   - Guest analysis rate limiting returns a clear message once exceeded.
+ *   - Application-level analysis quota is disabled — no ANALYSIS_LIMIT_REACHED
+ *     response is ever produced (Gemini's own 429 is still surfaced).
  *   - Guests can actually upload a PDF (multipart passes the upload middleware).
  *
  * The persistence assertions (guest leaves no DB record / logged-in user's
@@ -144,30 +145,34 @@ console.log("=== C. Protected routes still require auth ===");
   check("DELETE /:id without token → 401", del.status === 401, `got ${del.status}`);
 }
 
-console.log("=== D. Guest analysis rate limit ===");
+console.log("=== D. No application-level analysis quota ===");
 {
+  // Application-level analysis quota temporarily disabled.
+  // Re-enable after monitoring real usage and establishing production limits.
+  // The API must never return our custom ANALYSIS_LIMIT_REACHED response.
+  // (A provider-side 429 from Gemini is still valid and expected under load.)
   const ip = `198.51.100.${(ipCounter % 250) + 1}`;
-  let reached = null;
+  let quotaHit = false;
   for (let i = 0; i < 12; i += 1) {
     const res = await fetch(`${base}/analysis`, {
       method: "POST",
       headers: { "X-Forwarded-For": ip },
     });
     if (res.status === 429) {
-      reached = i + 1;
-      const body = await res.json();
-      check(
-        "rate limit returns a clear message",
-        /free anonymous analyses/i.test(body.message ?? ""),
-        `msg: ${body.message}`,
-      );
+      const body = await res.json().catch(() => ({}));
+      if (
+        body.code === "ANALYSIS_LIMIT_REACHED" ||
+        /analysis limit reached/i.test(body.message ?? "")
+      ) {
+        quotaHit = true;
+      }
       break;
     }
   }
   check(
-    "guest IP gets 429 after exceeding the limit",
-    reached !== null,
-    `never hit 429 within 12 tries (config limit=${process.env.GUEST_ANALYSIS_LIMIT ?? "default"})`,
+    "no application-level analysis limit is enforced",
+    !quotaHit,
+    "got the custom ANALYSIS_LIMIT_REACHED quota response",
   );
 }
 

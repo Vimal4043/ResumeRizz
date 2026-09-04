@@ -29,6 +29,13 @@ const userSchema = new mongoose.Schema(
       required: [true, "Password hash is required"],
       select: false, // never returned by queries unless explicitly requested
     },
+    // Lightweight usage metadata (no billing, no content): how many analyses
+    // the account has run and when it last ran one. Updated best-effort after
+    // each successful authenticated analysis.
+    usage: {
+      analysisCount: { type: Number, default: 0, min: 0 },
+      lastAnalysisAt: { type: Date, default: null },
+    },
   },
   { timestamps: true }, // createdAt + updatedAt
 );

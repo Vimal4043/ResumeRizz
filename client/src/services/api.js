@@ -72,4 +72,30 @@ export function getErrorMessage(error, fallback = "Something went wrong.") {
   return error?.response?.data?.message || error?.message || fallback;
 }
 
+/**
+ * User-facing error message for the analysis flow, mapped from the HTTP status
+ * so raw backend/AI internals are never shown. Validation errors (400) still
+ * surface the backend's useful, user-safe validation message.
+ */
+export function getAnalysisErrorMessage(error) {
+  const status = error?.response?.status;
+  const code = error?.code; // axios network-level code (no response received)
+
+  if (status === 429) {
+    return "You're making requests a little too quickly. Please try again later.";
+  }
+  if (status === 408 || status === 504 || code === "ECONNABORTED") {
+    return "The analysis took too long. Please try again.";
+  }
+  if (status === 502 || status === 503 || status === 500) {
+    return "AI analysis is temporarily unavailable. Please try again later.";
+  }
+  if (!error?.response) {
+    // Network failure / server unreachable — never show the raw axios error.
+    return "Could not reach the analysis service. Check your connection and try again.";
+  }
+  // Validation and other client errors: the backend message is user-facing.
+  return getErrorMessage(error, "Something went wrong. Please try again.");
+}
+
 export default api;

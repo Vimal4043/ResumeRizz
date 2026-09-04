@@ -8,6 +8,12 @@ export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 export const MIN_JOB_DESCRIPTION_LENGTH = 40;
 
 /**
+ * Maximum number of characters the backend accepts for a job description
+ * (kept in sync with the server's MAX_JOB_DESCRIPTION_LENGTH, default 20000).
+ */
+export const MAX_JOB_DESCRIPTION_LENGTH = 20000;
+
+/**
  * Ordered stages shown in the analysis progress UI while the request is in
  * flight. These describe high-level phases of the pipeline, not precise internal
  * progress — they advance with the request lifecycle, never a fake percentage.

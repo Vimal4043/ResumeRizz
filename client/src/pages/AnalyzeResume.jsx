@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer.jsx";
 import ResumeUploader from "../components/resume/ResumeUploader.jsx";
@@ -6,7 +6,10 @@ import JobDescriptionInput from "../components/resume/JobDescriptionInput.jsx";
 import AnalysisProgress from "../components/resume/AnalysisProgress.jsx";
 import Button from "../components/common/Button.jsx";
 import { useResumeAnalysis } from "../hooks/useResumeAnalysis.js";
-import { MIN_JOB_DESCRIPTION_LENGTH } from "../utils/constants.js";
+import {
+  MIN_JOB_DESCRIPTION_LENGTH,
+  MAX_JOB_DESCRIPTION_LENGTH,
+} from "../utils/constants.js";
 
 export default function AnalyzeResume() {
   const navigate = useNavigate();
@@ -14,13 +17,19 @@ export default function AnalyzeResume() {
   const [jobDescription, setJobDescription] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const { status, stage, error, analyze } = useResumeAnalysis();
+  // Synchronous guard so a double-click can never fire two requests: state
+  // updates are async, so `loading` alone cannot stop back-to-back clicks
+  // within the same tick. (The backend rate limit is the real protection.)
+  const submittingRef = useRef(false);
 
   const loading = status === "loading";
 
   // A valid PDF is any file the uploader accepted (it already validates type/size).
   const hasValidFile = Boolean(file);
+  const jobDescriptionLength = jobDescription.trim().length;
   const hasValidJobDescription =
-    jobDescription.trim().length >= MIN_JOB_DESCRIPTION_LENGTH;
+    jobDescriptionLength >= MIN_JOB_DESCRIPTION_LENGTH &&
+    jobDescriptionLength <= MAX_JOB_DESCRIPTION_LENGTH;
   const canSubmit = hasValidFile && hasValidJobDescription && !loading;
 
   function handleFileChange(nextFile) {
@@ -37,21 +46,29 @@ export default function AnalyzeResume() {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    const nextErrors = {
-      file: hasValidFile ? "" : "Please choose a valid PDF resume.",
-      jobDescription: hasValidJobDescription
-        ? ""
-        : `Job description must be at least ${MIN_JOB_DESCRIPTION_LENGTH} characters.`,
-    };
-    setFieldErrors(nextErrors);
-    if (nextErrors.file || nextErrors.jobDescription || !file) return;
+    // Block duplicate submissions: disabled button + in-flight ref guard.
+    if (submittingRef.current) return;
+    if (!hasValidFile || !hasValidJobDescription) {
+      const nextErrors = {
+        file: hasValidFile ? "" : "Please choose a valid PDF resume.",
+        jobDescription:
+          jobDescriptionLength > MAX_JOB_DESCRIPTION_LENGTH
+            ? `Job description must be at most ${MAX_JOB_DESCRIPTION_LENGTH.toLocaleString()} characters.`
+            : `Job description must be at least ${MIN_JOB_DESCRIPTION_LENGTH} characters.`,
+      };
+      setFieldErrors(nextErrors);
+      return;
+    }
 
+    submittingRef.current = true;
     try {
       const result = await analyze(file, jobDescription.trim());
       // Pass the real analysis to the results page via navigation state (not the URL).
       navigate("/analysis", { state: { result } });
     } catch {
       // Error is surfaced through the hook's `error` state.
+    } finally {
+      submittingRef.current = false;
     }
   }
 

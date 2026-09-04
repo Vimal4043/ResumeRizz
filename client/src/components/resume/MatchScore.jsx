@@ -1,7 +1,7 @@
 function scoreColor(score) {
   if (score >= 80) return { text: "text-success-text", bar: "bg-success" };
   if (score >= 60) return { text: "text-warning-text", bar: "bg-warning" };
-  return { text: "text-danger-text", bar: "bg-danger-soft0" };
+  return { text: "text-danger-text", bar: "bg-danger" };
 }
 
 /**

@@ -48,9 +48,11 @@ class GeminiService {
   /**
    * Generate text for a prompt using the configured Gemini model.
    *
-   * Never logs the API key or the full prompt/response. Errors are mapped to
-   * friendly, non-leaking AppErrors so the centralized error middleware can
-   * render them consistently.
+   * A hard timeout (env.aiTimeoutMs) aborts the underlying request so callers
+   * never hang indefinitely; the timeout surfaces as a clean AppError the
+   * frontend can recognize. Never logs the API key or the full prompt/response.
+   * Errors are mapped to friendly, non-leaking AppErrors so the centralized
+   * error middleware can render them consistently.
    *
    * @param {string} prompt - The text prompt to send to the model.
    * @returns {Promise<string>} The model's generated text.
@@ -58,15 +60,37 @@ class GeminiService {
   async generateContent(prompt) {
     const client = this._getClient();
 
+    // AbortController bound to the configured AI timeout. The SDK cancels the
+    // HTTP request when the signal fires; the promise race below guarantees a
+    // clean rejection even if the SDK were to swallow the abort.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), env.aiTimeoutMs);
+
     try {
-      const response = await client.models.generateContent({
-        model: this.model,
-        contents: prompt,
-      });
+      const response = await Promise.race([
+        client.models.generateContent({
+          model: this.model,
+          contents: prompt,
+          config: { abortSignal: controller.signal },
+        }),
+        new Promise((_resolve, reject) => {
+          controller.signal.addEventListener("abort", () => {
+            reject(
+              new AppError(
+                "The analysis took too long. Please try again.",
+                504,
+                "AI_TIMEOUT",
+              ),
+            );
+          });
+        }),
+      ]);
 
       return this._extractText(response);
     } catch (error) {
       throw this._mapError(error);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -95,8 +119,9 @@ class GeminiService {
     }
 
     throw new AppError(
-      "Gemini returned an empty or unexpected response — no generated text found.",
+      "The AI service returned an unexpected response. Please try again later.",
       502,
+      "AI_UNAVAILABLE",
     );
   }
 
@@ -143,19 +168,24 @@ class GeminiService {
       );
     }
 
-    // Rate limiting — surface it so clients can back off.
+    // Rate limiting from the AI provider — surface a provider-neutral message
+    // so clients can back off. No quota numbers, no provider internals.
     if (status === 429) {
+      logger.warn("AI provider rate limit reached; backing off.");
       return new AppError(
-        "Gemini rate limit reached. Please retry later.",
+        "AI service is temporarily busy. Please try again later.",
         429,
+        "AI_RATE_LIMITED",
       );
     }
 
-    // Everything else (network, quota, 5xx, unknown): keep it generic.
-    logger.error(`Gemini API error: ${message}`);
+    // Everything else (network, quota, 5xx, unknown): keep it generic and
+    // provider-neutral — never echo the raw error, key, or request details.
+    logger.error(`AI provider request failed: ${message}`);
     return new AppError(
-      "Gemini API request failed. Please try again later.",
+      "AI analysis is temporarily unavailable. Please try again later.",
       502,
+      "AI_UNAVAILABLE",
     );
   }
 }

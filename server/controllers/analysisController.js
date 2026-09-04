@@ -1,10 +1,12 @@
 import fs from "node:fs/promises";
+import { env } from "../config/env.js";
 import { AppError, ValidationError } from "../utils/errors.js";
 import { sendSuccess } from "../utils/response.js";
 import { logger } from "../utils/logger.js";
 import { analysisService } from "../services/ai/analysisService.js";
 import { Resume } from "../models/Resume.js";
 import { Analysis } from "../models/Analysis.js";
+import { User } from "../models/User.js";
 
 /**
  * Minimum meaningful length for a job description.
@@ -59,6 +61,12 @@ export async function analyze(req, res) {
       );
     }
 
+    if (jobDescription.length > env.maxJobDescriptionLength) {
+      throw new ValidationError(
+        `The "jobDescription" is too long (maximum ${env.maxJobDescriptionLength.toLocaleString()} characters). Please trim it and try again.`,
+      );
+    }
+
     const result = await analysisService.analyzeResume({
       resumeFile: req.file,
       jobDescription,
@@ -86,6 +94,22 @@ export async function analyze(req, res) {
           matchScore: result.analysis.matchScore,
         });
         analysisId = doc._id.toString();
+
+        // Lightweight usage tracking (no billing): count analyses and keep the
+        // last-analysis timestamp on the account. Best-effort — a tracking
+        // failure must never lose the user's result. No resume/JD content is
+        // recorded here.
+        await User.findByIdAndUpdate(
+          req.user._id,
+          {
+            $inc: { "usage.analysisCount": 1 },
+            $set: { "usage.lastAnalysisAt": new Date() },
+          },
+        ).catch((trackErr) => {
+          logger.warn(
+            `Failed to update usage stats for user ${req.user._id}: ${trackErr.message}`,
+          );
+        });
       } catch (persistErr) {
         logger.error(
           `Failed to persist analysis for user ${req.user._id}: ${persistErr.message}`,

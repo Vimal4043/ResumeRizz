@@ -6,7 +6,9 @@ import { env } from "../config/env.js";
 import { ValidationError } from "../utils/errors.js";
 
 const ALLOWED_MIME_TYPES = ["application/pdf"];
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+// Centralized in config/env.js (MAX_UPLOAD_MB, default 5 MB) so the server and
+// the frontend's MAX_FILE_SIZE_BYTES stay in sync from one place.
+const MAX_FILE_SIZE_BYTES = env.maxUploadBytes;
 
 // Ensure the uploads directory exists (resumes are git-ignored, only .gitkeep
 // is tracked).

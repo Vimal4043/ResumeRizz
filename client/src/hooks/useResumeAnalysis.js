@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analyzeResume } from "../services/analysisService.js";
-import { getErrorMessage } from "../services/api.js";
+import { getAnalysisErrorMessage } from "../services/api.js";
 import { ANALYSIS_STEPS } from "../utils/constants.js";
 
 /**
@@ -50,7 +50,7 @@ export function useResumeAnalysis() {
         return data;
       } catch (err) {
         stopTimer();
-        setError(getErrorMessage(err));
+        setError(getAnalysisErrorMessage(err));
         setStatus("error");
         throw err;
       }

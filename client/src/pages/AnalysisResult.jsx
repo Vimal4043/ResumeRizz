@@ -5,6 +5,8 @@ import EmptyState from "../components/common/EmptyState.jsx";
 import Button from "../components/common/Button.jsx";
 import Spinner from "../components/common/Spinner.jsx";
 import MatchScore from "../components/resume/MatchScore.jsx";
+import ShouldIApply from "../components/resume/ShouldIApply.jsx";
+import TopPriorities from "../components/resume/TopPriorities.jsx";
 import StrengthsCard from "../components/resume/StrengthsCard.jsx";
 import MissingSkillsCard from "../components/resume/MissingSkillsCard.jsx";
 import PartialMatches from "../components/resume/PartialMatches.jsx";
@@ -228,7 +230,17 @@ export default function AnalysisResult() {
             </div>
           )}
 
-          <MatchScore score={result.matchScore} summary={result.matchSummary} />
+          {/* Top summary: score + recommendation, side by side on desktop. */}
+          <div className="grid gap-6">
+            <div className="lg:col-span-2">
+              <MatchScore score={result.matchScore} summary={result.matchSummary} />
+            </div>
+            <div className="lg:col-span-3">
+              <ShouldIApply result={result} />
+            </div>
+          </div>
+
+          <TopPriorities result={result} />
           <StrengthsCard strengths={result.strengths} />
           <MissingSkillsCard missingSkills={result.missingSkills} />
           <PartialMatches partialMatches={result.partialMatches} />
