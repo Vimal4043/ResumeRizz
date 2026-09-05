@@ -16,9 +16,18 @@ export const env = {
   isProd: process.env.NODE_ENV === "production",
   port: Number(process.env.PORT) || 5000,
   geminiApiKey: process.env.GEMINI_API_KEY || "",
-  // Model name is centralized here so it can be swapped without touching
+  // Model names are centralized here so they can be swapped without touching
   // business logic. Prefer a currently available stable Flash model (free tier).
   geminiModel: process.env.GEMINI_MODEL || "gemini-3.6-flash",
+  // Optional fallback model used only when the primary model is transiently
+  // unavailable (e.g. 503). Empty string disables the fallback.
+  geminiFallbackModel: process.env.GEMINI_FALLBACK_MODEL || "",
+  // AI reliability settings. Retries apply ONLY to transient failures
+  // (503/unavailable, timeouts, empty responses) — never to auth errors,
+  // malformed requests, or daily quota exhaustion.
+  aiMaxRetries: Math.max(0, Number(process.env.AI_MAX_RETRIES) || 2),
+  // Base delay for exponential backoff between retry attempts (ms).
+  aiRetryBaseDelayMs: Math.max(100, Number(process.env.AI_RETRY_BASE_DELAY_MS) || 1_000),
   clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
   mongodbUri: process.env.MONGODB_URI || "",
   jwtSecret: process.env.JWT_SECRET || "",
@@ -34,13 +43,39 @@ export const env = {
   //   authAnalysisLimit: Number(process.env.AUTH_ANALYSIS_LIMIT) || 30,
   //   authAnalysisWindowMs:
   //     (Number(process.env.AUTH_ANALYSIS_WINDOW_HOURS) || 24) * 60 * 60 * 1000,
-  // Hard ceiling for one Gemini call. Past this, the request is aborted and a
-  // clean timeout error is returned instead of hanging.
-  aiTimeoutMs: Number(process.env.AI_TIMEOUT_MS) || 120_000,
+  // Hard ceiling for one Gemini HTTP attempt. Past this, the attempt is aborted
+  // and (for transient errors) retried within the configured retry budget
+  // instead of hanging. Supports the newer AI_REQUEST_TIMEOUT_MS name and keeps
+  // the legacy AI_TIMEOUT_MS as a compatible fallback.
+  aiRequestTimeoutMs:
+    Number(process.env.AI_REQUEST_TIMEOUT_MS) ||
+    Number(process.env.AI_TIMEOUT_MS) ||
+    60_000,
+  // Overall wall-clock budget (ms) for the ENTIRE generateContent call across
+  // all attempts and the fallback model. Prevents a worst case of
+  // (1 + AI_MAX_RETRIES) × models × AI_REQUEST_TIMEOUT_MS of user waiting
+  // when the provider hangs. Defaults to two per-attempt timeouts: at least
+  // two full attempts always get a chance, but a hanging provider can never
+  // hold a user request for more than ~2× the per-attempt timeout.
+  aiTotalBudgetMs:
+    Number(process.env.AI_TOTAL_BUDGET_MS) ||
+    (Number(process.env.AI_REQUEST_TIMEOUT_MS) ||
+      Number(process.env.AI_TIMEOUT_MS) ||
+      60_000) *
+      2,
   // Maximum accepted job-description length (defends the AI prompt + DB).
   maxJobDescriptionLength: Number(process.env.MAX_JOB_DESCRIPTION_LENGTH) || 20_000,
   // Maximum accepted resume upload size (multer + frontend stay in sync).
   maxUploadBytes: Number(process.env.MAX_UPLOAD_MB) * 1024 * 1024 || 5 * 1024 * 1024,
+  // ---- Analysis quota & cooldown (application-level, re-enabled) ----
+  // Guests are limited per IP (in-memory), authenticated users per account
+  // (persisted in MongoDB via the Analysis collection).
+  guestDailyAnalysisLimit: Number(process.env.GUEST_DAILY_ANALYSIS_LIMIT) || 5,
+  authDailyAnalysisLimit: Number(process.env.AUTH_DAILY_ANALYSIS_LIMIT) || 20,
+  // Minimum time between two analyses (any user). Prevents rapid-fire usage
+  // and accidental double-runs; applies to SUCCESSFUL analyses only.
+  analysisCooldownMs:
+    (Number(process.env.ANALYSIS_COOLDOWN_MINUTES) || 10) * 60 * 1000,
   uploadsDir: path.join(projectRoot, "uploads"),
 };
 

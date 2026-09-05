@@ -1,6 +1,12 @@
 /**
  * Base error carrying an HTTP status code. All other application errors extend
  * this class so the centralized error middleware can map them to responses.
+ *
+ * The third argument doubles as a machine-readable ERROR CODE when a string is
+ * passed (e.g. "AI_RATE_LIMITED", "NO_EXTRACTABLE_TEXT"). The error middleware
+ * exposes it to the frontend as `error.code` so clients never have to match on
+ * message text. Non-string details (e.g. field-validation maps) stay in
+ * `details` and are surfaced as `errors` for form rendering.
  */
 export class AppError extends Error {
   constructor(message, statusCode = 500, details = null) {
@@ -8,6 +14,19 @@ export class AppError extends Error {
     this.name = this.constructor.name;
     this.statusCode = statusCode;
     this.details = details;
+    this.retryAfterSeconds = null; // set explicitly for 429s with a retry hint
+  }
+
+  /** Machine-readable error code (string details), or a sensible fallback. */
+  get code() {
+    if (typeof this.details === "string") return this.details;
+    if (this.statusCode === 401) return "UNAUTHORIZED";
+    if (this.statusCode === 403) return "FORBIDDEN";
+    if (this.statusCode === 404) return "NOT_FOUND";
+    if (this.statusCode === 429) return "RATE_LIMITED";
+    if (this.statusCode === 400) return "VALIDATION_ERROR";
+    if (this.statusCode >= 500) return "SERVER_ERROR";
+    return "REQUEST_ERROR";
   }
 }
 

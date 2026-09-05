@@ -69,33 +69,83 @@ export async function postFormData(url, formData) {
 
 /** Convenience helper used by feature services to read backend errors. */
 export function getErrorMessage(error, fallback = "Something went wrong.") {
-  return error?.response?.data?.message || error?.message || fallback;
+  return (
+    error?.response?.data?.error?.message ||
+    error?.response?.data?.message ||
+    error?.message ||
+    fallback
+  );
 }
 
 /**
- * User-facing error message for the analysis flow, mapped from the HTTP status
- * so raw backend/AI internals are never shown. Validation errors (400) still
- * surface the backend's useful, user-safe validation message.
+ * Structured error for the analysis flow, keyed off the backend's
+ * machine-readable `error.code` — never message-text matching.
+ *
+ * Returns: { code, message, retryAfterSeconds }
+ *   - code: the backend error code (or a client-side fallback like NETWORK_ERROR)
+ *   - message: the user-facing message (backend-provided when safe, otherwise
+ *     a status-based mapping — never raw internals)
+ *   - retryAfterSeconds: server-provided retry hint (> 0) for AI_RATE_LIMITED,
+ *     or 0 when unknown (no fake countdowns)
  */
-export function getAnalysisErrorMessage(error) {
+export function getAnalysisError(error) {
   const status = error?.response?.status;
-  const code = error?.code; // axios network-level code (no response received)
+  const data = error?.response?.data;
+  const backendCode = data?.error?.code;
+  const backendMessage = data?.error?.message || data?.message;
+  const retryAfterSeconds = Number(data?.error?.retryAfterSeconds) || 0;
 
-  if (status === 429) {
-    return "You're making requests a little too quickly. Please try again later.";
-  }
-  if (status === 408 || status === 504 || code === "ECONNABORTED") {
-    return "The analysis took too long. Please try again.";
-  }
-  if (status === 502 || status === 503 || status === 500) {
-    return "AI analysis is temporarily unavailable. Please try again later.";
-  }
+  // Network failure / server unreachable — axios has no response object.
   if (!error?.response) {
-    // Network failure / server unreachable — never show the raw axios error.
-    return "Could not reach the analysis service. Check your connection and try again.";
+    return {
+      code: "NETWORK_ERROR",
+      message:
+        "We couldn't connect to the analysis service. Please check your connection and try again.",
+      retryAfterSeconds: 0,
+    };
   }
-  // Validation and other client errors: the backend message is user-facing.
-  return getErrorMessage(error, "Something went wrong. Please try again.");
+
+  // Prefer the backend's structured error when present.
+  if (backendCode) {
+    return { code: backendCode, message: backendMessage, retryAfterSeconds };
+  }
+
+  // Fallback mapping by HTTP status (older backends / proxies).
+  if (status === 429) {
+    return {
+      code: "AI_RATE_LIMITED",
+      message: "AI analysis is temporarily rate-limited. Please try again later.",
+      retryAfterSeconds: 0,
+    };
+  }
+  if (status === 408 || status === 504 || error?.code === "ECONNABORTED") {
+    return {
+      code: "AI_TIMEOUT",
+      message: "The analysis took too long to complete. Please try again.",
+      retryAfterSeconds: 0,
+    };
+  }
+  if (status === 502 || status === 503) {
+    return {
+      code: "AI_UNAVAILABLE",
+      message: "We couldn't complete the AI analysis right now. Please try again shortly.",
+      retryAfterSeconds: 0,
+    };
+  }
+  if (status >= 500) {
+    return {
+      code: "SERVER_ERROR",
+      message: "Something went wrong while analyzing your resume. Please try again.",
+      retryAfterSeconds: 0,
+    };
+  }
+
+  // Client errors (4xx): the backend message is user-facing by contract.
+  return {
+    code: backendCode || "REQUEST_ERROR",
+    message: backendMessage || "Something went wrong. Please try again.",
+    retryAfterSeconds: 0,
+  };
 }
 
 export default api;

@@ -8,7 +8,12 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "test:public": "node tests/runPublicAnalysisTests.mjs",
-    "test:persistence": "node tests/runPersistenceFlow.mjs"
+    "test:persistence": "node tests/runPersistenceFlow.mjs",
+    "test:reliability": "node tests/runReliabilityTests.mjs",
+    "test:limits": "node tests/runLimitsTests.mjs",
+    "test:quota": "node tests/runQuotaTests.mjs",
+    "test:errors": "node tests/runErrorContractTests.mjs",
+    "test": "node tests/runReliabilityTests.mjs && node tests/runLimitsTests.mjs && node tests/runQuotaTests.mjs && node tests/runErrorContractTests.mjs && node tests/runPublicAnalysisTests.mjs && node tests/runPersistenceFlow.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.19.0",

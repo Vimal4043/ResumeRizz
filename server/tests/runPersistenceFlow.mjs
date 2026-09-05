@@ -1,12 +1,14 @@
 /** DEV-ONLY persistence flow test. Requires MongoDB + live Gemini key.
  *  node server/tests/runPersistenceFlow.mjs
  *  Verifies guest NO-save, authenticated save-to-correct-user, temp PDF cleanup. */
-import { app } from "../app.js";
-import { connectDB, disconnectDB } from "../config/db.js";
-import { User } from "../models/User.js";
-import { Resume } from "../models/Resume.js";
-import { Analysis } from "../models/Analysis.js";
-import { env } from "../config/env.js";
+// Quota middleware is skipped in NODE_ENV=test; set it before app.js loads.
+process.env.NODE_ENV = "test";
+const { app } = await import("../app.js");
+const { connectDB, disconnectDB } = await import("../config/db.js");
+const { User } = await import("../models/User.js");
+const { Resume } = await import("../models/Resume.js");
+const { Analysis } = await import("../models/Analysis.js");
+const { env } = await import("../config/env.js");
 import { readdir } from "node:fs/promises";
 
 let p = 0, f = 0;

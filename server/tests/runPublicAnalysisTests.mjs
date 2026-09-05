@@ -6,15 +6,17 @@
  * Covers the parts that do NOT require a live Gemini call or a completed run:
  *   - POST /api/analysis is public (401 no longer returned for guests).
  *   - Authenticated-only routes (/history, /:id GET/DELETE) stay protected.
- *   - Application-level analysis quota is disabled — no ANALYSIS_LIMIT_REACHED
- *     response is ever produced (Gemini's own 429 is still surfaced).
+ *   - Application-level analysis quota exists but is bypassed in NODE_ENV=test.
  *   - Guests can actually upload a PDF (multipart passes the upload middleware).
  *
  * The persistence assertions (guest leaves no DB record / logged-in user's
  * analysis is saved to their own account) require a real Gemini call, so those
  * are run manually against a live server.
  */
-import { app } from "../app.js";
+// Quota middleware is skipped in NODE_ENV=test; set it before app.js loads
+// (ESM import hoisting → dynamic import).
+process.env.NODE_ENV = "test";
+const { app } = await import("../app.js");
 
 let passed = 0;
 let failed = 0;

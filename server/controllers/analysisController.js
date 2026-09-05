@@ -4,6 +4,7 @@ import { AppError, ValidationError } from "../utils/errors.js";
 import { sendSuccess } from "../utils/response.js";
 import { logger } from "../utils/logger.js";
 import { analysisService } from "../services/ai/analysisService.js";
+import { recordGuestAnalysis } from "../middleware/analysisQuotaMiddleware.js";
 import { Resume } from "../models/Resume.js";
 import { Analysis } from "../models/Analysis.js";
 import { User } from "../models/User.js";
@@ -40,7 +41,8 @@ export async function analyze(req, res) {
   try {
     if (!req.file) {
       throw new ValidationError(
-        "No resume file uploaded. Please attach a PDF file.",
+        "Please upload a PDF resume to continue.",
+        "RESUME_REQUIRED",
       );
     }
 
@@ -51,19 +53,22 @@ export async function analyze(req, res) {
 
     if (!jobDescription) {
       throw new ValidationError(
-        'The "jobDescription" field is required and cannot be empty.',
+        "Please paste the job description before analyzing.",
+        "JOB_DESCRIPTION_REQUIRED",
       );
     }
 
     if (jobDescription.length < MIN_JOB_DESCRIPTION_LENGTH) {
       throw new ValidationError(
-        'The "jobDescription" is too short to analyze. Please provide a fuller job description.',
+        "The job description is too short to analyze reliably. Please paste the complete description.",
+        "JOB_DESCRIPTION_TOO_SHORT",
       );
     }
 
     if (jobDescription.length > env.maxJobDescriptionLength) {
       throw new ValidationError(
-        `The "jobDescription" is too long (maximum ${env.maxJobDescriptionLength.toLocaleString()} characters). Please trim it and try again.`,
+        `The job description is too long (maximum ${env.maxJobDescriptionLength.toLocaleString()} characters). Please trim it and try again.`,
+        "JOB_DESCRIPTION_TOO_LONG",
       );
     }
 
@@ -115,6 +120,12 @@ export async function analyze(req, res) {
           `Failed to persist analysis for user ${req.user._id}: ${persistErr.message}`,
         );
       }
+    }
+
+    // Guest cooldown bookkeeping: only SUCCESSFUL analyses start the 10-minute
+    // cooldown clock (a failed/invalid attempt never locks the user out).
+    if (!isAuthenticated) {
+      recordGuestAnalysis(req.ip);
     }
 
     return sendSuccess(

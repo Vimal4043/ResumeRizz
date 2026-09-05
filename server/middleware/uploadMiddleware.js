@@ -29,7 +29,12 @@ function fileFilter(_req, file, cb) {
   // Validate both the reported MIME type and the extension so a mislabeled file
   // cannot slip through.
   if (file.mimetype !== "application/pdf" || extension !== ".pdf") {
-    return cb(new ValidationError("Only PDF files are allowed."));
+    return cb(
+      new ValidationError(
+        "Please upload a PDF resume.",
+        "INVALID_FILE_TYPE",
+      ),
+    );
   }
   return cb(null, true);
 }

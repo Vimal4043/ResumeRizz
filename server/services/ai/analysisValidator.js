@@ -34,9 +34,9 @@ const REQUIRED_KEYS = [
 ];
 
 function invalid(
-  message = "The AI returned an invalid analysis format. Please try again.",
+  message = "We received an invalid analysis response. Please try again.",
 ) {
-  return new AppError(message, 502);
+  return new AppError(message, 502, "AI_INVALID_RESPONSE");
 }
 
 function asString(value) {
@@ -214,7 +214,8 @@ export function validateAndNormalizeAnalysis(raw) {
   try {
     parsed = JSON.parse(jsonText);
   } catch {
-    throw invalid("The AI returned malformed JSON. Please try again.");
+    // Never surface parser internals — one consistent user-safe message.
+    throw invalid();
   }
 
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -223,13 +224,12 @@ export function validateAndNormalizeAnalysis(raw) {
 
   // All documented fields are required (arrays may be empty).
   for (const key of REQUIRED_KEYS) {
-    if (!(key in parsed))
-      throw invalid(`The AI response is missing the "${key}" field.`);
+    if (!(key in parsed)) throw invalid();
   }
 
   const matchScore = Number(parsed.matchScore);
   if (!Number.isFinite(matchScore) || matchScore < 0 || matchScore > 100) {
-    throw invalid("The AI returned an invalid match score.");
+    throw invalid();
   }
 
   return {

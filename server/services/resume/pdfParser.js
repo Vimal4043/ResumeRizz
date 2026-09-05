@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import pdf from "pdf-parse-new";
 import { ValidationError } from "../../utils/errors.js";
+import { logger } from "../../utils/logger.js";
 
 /**
  * Clean up the raw extracted text:
@@ -50,8 +51,10 @@ export async function extractTextFromPdf(filePath) {
     const buffer = await fs.readFile(filePath);
     data = await pdf(buffer);
   } catch (error) {
+    logger.warn(`PDF parse failed: ${error?.message?.slice(0, 200)}`);
     throw new ValidationError(
-      "Could not read the PDF. The file may be corrupted or not a valid PDF.",
+      "We couldn't read this PDF. The file may be corrupted — please try re-exporting it as a PDF.",
+      "PDF_PARSE_FAILED",
     );
   }
 
@@ -61,7 +64,8 @@ export async function extractTextFromPdf(filePath) {
   // instead of silently returning an empty body.
   if (!text) {
     throw new ValidationError(
-      "No extractable text found in the PDF. It may be a scanned document or contain an embedded font that blocks text extraction.",
+      "We couldn't extract text from this PDF. Please upload a text-based PDF rather than a scanned image.",
+      "NO_EXTRACTABLE_TEXT",
     );
   }
 
