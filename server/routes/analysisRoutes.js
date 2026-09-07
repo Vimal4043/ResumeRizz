@@ -6,10 +6,7 @@ import {
   deleteAnalysis,
 } from "../controllers/analysisController.js";
 import { uploadMiddleware } from "../middleware/uploadMiddleware.js";
-import {
-  guestDailyAnalysisLimiter,
-  analysisQuota,
-} from "../middleware/analysisQuotaMiddleware.js";
+import { analysisQuota } from "../middleware/analysisQuotaMiddleware.js";
 import {
   requireAuth,
   attachOptionalUser,
@@ -22,17 +19,17 @@ const router = Router();
 // result without persistence.
 //
 // Quota order matters:
-//   1. attachOptionalUser — resolves req.user so the guest limiter can skip
-//      authenticated requests (they're capped per account instead).
-//   2. guestDailyAnalysisLimiter — 5/day per IP for guests (before upload, so
-//      rejected requests never write a temp file).
-//   3. analysisQuota — the 10-minute cooldown (everyone) and the per-account
-//      20/day cap for authenticated users.
-//   4. uploadMiddleware — only requests that passed quota touch the disk.
+//   1. attachOptionalUser — resolves req.user so the quota middleware can split
+//      guest (per-IP, in-memory) from authenticated (per-account, DB) limits.
+//   2. analysisQuota — enforces the cooldown and the daily cap for BOTH guests
+//      and authenticated users, BEFORE upload so a rejected request never writes
+//      a temp file. The daily cap counts only SUCCESSFUL analyses (guests:
+//      in-memory via recordGuestAnalysis; authed: Analysis documents), so
+//      validation/AI/cooldown failures never consume quota.
+//   3. uploadMiddleware — only requests that passed quota touch the disk.
 router.post(
   "/",
   attachOptionalUser,
-  guestDailyAnalysisLimiter,
   analysisQuota,
   uploadMiddleware.single("resume"),
   analyze,

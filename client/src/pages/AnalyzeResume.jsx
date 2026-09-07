@@ -100,7 +100,7 @@ export default function AnalyzeResume() {
       title="Resume Analyzer"
       subtitle="Upload your resume, paste a job description, and get an honest match analysis you can act on."
     >
-      <form onSubmit={handleSubmit} noValidate className="space-y-8">
+      <form onSubmit={handleSubmit} noValidate className="space-y-6 sm:space-y-8">
         <div className="space-y-6 rounded-xl border border-border bg-surface p-6">
           <ResumeUploader
             file={file}
@@ -121,21 +121,27 @@ export default function AnalyzeResume() {
             role="alert"
             className="rounded-md border border-danger/40 bg-danger-soft px-4 py-3 text-sm text-danger-text"
           >
-            <p className="font-semibold">We couldn’t complete the analysis.</p>
-            {/* ONE clear message describing the actual failure — the generic
-                "check your PDF/JD" hint is intentionally NOT appended here. */}
-            <p className="mt-1">{error.message}</p>
-            {/* Live countdown only when the server provided a retry hint. */}
-            {countdownActive && (
-              <p className="mt-1 font-medium">
-                Try again in {formatCountdown(retrySecondsLeft)}
+            {countdownActive ? (
+              // Cooldown: the live countdown is the ONLY waiting indicator. The
+              // static "wait about N minutes" sentence is intentionally omitted
+              // so the user sees a single, accurate, updating value Ã¢â‚¬â€ never two
+              // conflicting durations.
+              <p className="font-medium">
+                Next analysis available in {formatCountdown(retrySecondsLeft)}.
               </p>
-            )}
-            {/* Contextual next step ONLY for input (resume/JD) errors. */}
-            {!countdownActive && isInputError(error.code) && (
-              <p className="mt-1 text-xs text-danger-text">
-                {ANALYSIS_INPUT_ERROR_HINTS[error.code]}
-              </p>
+            ) : (
+              <>
+                <p className="font-semibold">We couldn't complete the analysis.</p>
+                {/* ONE clear message describing the actual failure Ã¢â‚¬â€ the generic
+                    "check your PDF/JD" hint is intentionally NOT appended here. */}
+                <p className="mt-1">{error.message}</p>
+                {/* Contextual next step ONLY for input (resume/JD) errors. */}
+                {isInputError(error.code) && (
+                  <p className="mt-1 text-xs text-danger-text">
+                    {ANALYSIS_INPUT_ERROR_HINTS[error.code]}
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
@@ -144,7 +150,7 @@ export default function AnalyzeResume() {
           <p className="text-xs text-text-muted">
             {!hasValidFile && "Select a PDF resume. "}
             {!hasValidJobDescription && "Add a fuller job description. "}
-            {hasValidFile && hasValidJobDescription && "Ready to analyze."}
+            {hasValidFile && hasValidJobDescription && retrySecondsLeft === 0 && "Ready to analyze."}
           </p>
           <Button
             type="submit"

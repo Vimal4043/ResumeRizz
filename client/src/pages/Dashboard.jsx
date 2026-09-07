@@ -184,7 +184,7 @@ export default function Dashboard() {
           </ul>
 
           {state.totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between text-sm">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
               <Button
                 variant="secondary"
                 disabled={state.page <= 1}

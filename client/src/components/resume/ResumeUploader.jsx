@@ -69,7 +69,7 @@ export default function ResumeUploader({
 
   function pickerClass() {
     const base =
-      "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2";
+      "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-10 text-center transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:px-6 sm:py-12";
     if (disabled) return `${base} cursor-not-allowed opacity-60`;
     if (dragOver) return `${base} border-primary bg-primary-soft`;
     if (showError) return `${base} border-danger/40 bg-danger-soft/40`;
@@ -149,7 +149,7 @@ export default function ResumeUploader({
               type="button"
               onClick={clearFile}
               disabled={disabled}
-              className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               Remove
             </button>
@@ -157,7 +157,7 @@ export default function ResumeUploader({
               type="button"
               onClick={openPicker}
               disabled={disabled}
-              className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               Change file
             </button>

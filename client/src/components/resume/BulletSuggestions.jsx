@@ -48,7 +48,7 @@ export default function BulletSuggestions({ suggestions = [] }) {
                 </p>
               </div>
               <div>
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                     Suggested
                   </p>
@@ -57,7 +57,7 @@ export default function BulletSuggestions({ suggestions = [] }) {
                       type="button"
                       onClick={() => copy(item.suggestion, index)}
                       aria-label={`Copy suggestion${item.section ? ` for ${item.section}` : ""}`}
-                      className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       {copiedIndex === index ? "Copied ✓" : "Copy suggestion"}
                     </button>

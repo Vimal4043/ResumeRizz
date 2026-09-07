@@ -176,39 +176,35 @@ select {
 }
 
 /* ============================================================
-   Analysis-progress stage animations.
-   The keyframes/classes below are ONLY emitted when the user has
+   Analysis-loading message animation.
+   The fade-in keyframe below is ONLY emitted when the user has
    NOT requested reduced motion; in `prefers-reduced-motion: reduce`
-   they are absent entirely, so no stage animation ever runs.
+   it is absent entirely, so no message animation ever runs.
    ============================================================ */
 @media (prefers-reduced-motion: no-preference) {
-  @keyframes rr-pulse-dot {
-    0%,
-    100% {
-      opacity: 0.25;
-    }
-    50% {
-      opacity: 0.6;
-    }
-  }
-  @keyframes rr-check-appear {
+  @keyframes rr-fade-in {
     0% {
       opacity: 0;
-      transform: scale(0.45) rotate(-8deg);
-    }
-    60% {
-      opacity: 1;
-      transform: scale(1.05) rotate(6deg);
+      transform: translateY(0.25rem);
     }
     100% {
       opacity: 1;
-      transform: scale(1) rotate(0deg);
+      transform: translateY(0);
     }
   }
-  .rr-pulse-dot {
-    animation: rr-pulse-dot 1.6s ease-in-out infinite;
+    .rr-fade-in {
+    animation: rr-fade-in 0.3s ease-out forwards;
   }
-  .rr-check-appear {
-    animation: rr-check-appear 0.28s ease-out forwards;
+
+  @keyframes rr-slide-in-right {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+  .rr-slide-in-right {
+    animation: rr-slide-in-right 0.25s ease-out forwards;
   }
 }

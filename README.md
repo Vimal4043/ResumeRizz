@@ -41,7 +41,7 @@ resume-rizz/
 │       ├── pages/          # route-level views
 │       ├── hooks/          # useResumeAnalysis
 │       ├── services/       # api, analysisService
-│       └── utils/          # formatters, constants
+│       └── utils/          # formatters, constants, analysisStages (loading messages)
 ├── server/                 # Express API
 │   ├── config/             # env
 │   ├── controllers/        # request handlers

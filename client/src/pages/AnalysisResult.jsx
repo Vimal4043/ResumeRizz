@@ -216,12 +216,12 @@ export default function AnalysisResult() {
               </p>
               {!user && (
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                  <Link to="/register">
-                    <Button>Create free account</Button>
+                  <Link to="/register" className="block">
+                    <Button className="w-full sm:w-auto">Create free account</Button>
                   </Link>
                   <Link
                     to="/login"
-                    className="text-sm font-medium text-primary hover:underline"
+                    className="py-2 text-center text-sm font-medium text-primary hover:underline sm:py-0"
                   >
                     Log in
                   </Link>
