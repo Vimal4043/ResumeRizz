@@ -78,7 +78,7 @@ Two design decisions shape the result:
 
 ## Project Structure
 
-`
+```
 ResumeRizz/
 ├── client/                       # React SPA (Vite)
 │   ├── public/                   # favicon, logo
@@ -127,7 +127,7 @@ ResumeRizz/
 ├── uploads/                      # temporary uploaded files (git-ignored)
 ├── .gitignore
 └── README.md
-`
+```
 
 The backend follows **Routes → Controllers → Services → Models**. Business logic never lives in route definitions, and the frontend never holds Gemini API keys or database credentials.
 
