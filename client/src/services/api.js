@@ -114,7 +114,7 @@ export function getAnalysisError(error) {
   if (status === 429) {
     return {
       code: "AI_RATE_LIMITED",
-      message: "AI analysis is temporarily rate-limited. Please try again later.",
+      message: "AI analysis is temporarily unavailable.\nOur AI service is currently experiencing a usage limit. Please try again later.",
       retryAfterSeconds: 0,
     };
   }

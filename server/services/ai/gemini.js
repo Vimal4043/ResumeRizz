@@ -427,8 +427,8 @@ class GeminiService {
         {
           const rateLimited = new AppError(
             category.retryAfterMs > 0
-              ? "AI analysis is temporarily rate-limited."
-              : "AI analysis is temporarily rate-limited. Please try again later.",
+              ? "AI analysis is temporarily unavailable.\nOur AI service is currently experiencing a usage limit. Please try again later."
+              : "AI analysis is temporarily unavailable.\nOur AI service is currently experiencing a usage limit. Please try again later.",
             429,
             "AI_RATE_LIMITED",
           );
