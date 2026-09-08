@@ -183,10 +183,13 @@ export default function Navbar() {
         <Link
           to={user ? "/dashboard" : "/"}
           onClick={handleNavClick}
-          className="flex min-w-0 items-center gap-2 text-lg font-bold text-primary"
+          className="flex min-w-0 items-center"
         >
-          <span aria-hidden="true">📄</span>
-          <span className="truncate">ResumeRizz</span>
+          <img
+            src="/logoWithName.png"
+            alt="ResumeRizz"
+            className="h-14 w-auto"
+          />
         </Link>
 
         {/* Desktop navigation */}
