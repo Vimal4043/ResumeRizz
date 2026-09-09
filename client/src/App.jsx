@@ -19,7 +19,7 @@ function AppLayout() {
         <Outlet />
       </main>
       <footer className="border-t border-border px-4 py-4 text-center text-xs text-text-muted">
-        Made with ❤️ by <a href="https://github.com/Vimal4043" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+        Made with ❤️ by <a href="https://www.linkedin.com/in/vimal-kumar-bb3258218/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
           Vimal
         </a>
       </footer>
