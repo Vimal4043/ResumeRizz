@@ -39,12 +39,9 @@ export default function Register() {
         form.email.trim(),
         form.password,
       );
-      // If the backend requires email verification, redirect to the OTP page.
-      if (result.requiresVerification) {
-        navigate("/verify-email", { replace: true, state: { email: form.email.trim() } });
-        return;
-      }
-      navigate("/dashboard", { replace: true });
+      // New flow: on success, navigate straight to /verify-email.
+      // The backend has already sent the OTP; the user completes verification there.
+      navigate("/verify-email", { replace: true, state: { email: form.email.trim() } });
     } catch (err) {
       setError(getErrorMessage(err, "Could not create your account."));
     } finally {

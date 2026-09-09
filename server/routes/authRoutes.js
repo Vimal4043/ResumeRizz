@@ -7,6 +7,7 @@ import {
   getMe,
   sendOtp,
   verifyOtp,
+  cleanupExpiredPendingSignups,
 } from "../controllers/authController.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
 import { env } from "../config/env.js";
@@ -45,5 +46,9 @@ router.get("/me", requireAuth, getMe);
 // OTP endpoints
 router.post("/otp/send", sendOtpLimiter, sendOtp);
 router.post("/otp/verify", verifyOtpLimiter, verifyOtp);
+
+// Cleanup endpoint for expired pending signups (TTL index handles this
+// automatically, but this endpoint provides a manual trigger / monitoring hook).
+router.delete("/pending-signups/cleanup", cleanupExpiredPendingSignups);
 
 export default router;

@@ -16,7 +16,7 @@ fs.mkdirSync(env.uploadsDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, env.uploadsDir),
-  // Never trust the client-provided filename. Generate a safe random name with a
+  // NEVER trust the client-provided filename. Generate a safe random name with a
   // fixed extension that matches the validated PDF content.
   filename: (_req, _file, cb) => {
     const randomName = crypto.randomBytes(16).toString("hex");

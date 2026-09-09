@@ -1,4 +1,5 @@
 import { User } from "../models/User.js";
+import { PendingSignup } from "../models/PendingSignup.js";
 import { AppError } from "../utils/errors.js";
 import { signToken } from "../utils/jwt.js";
 import { sendSuccess } from "../utils/response.js";
@@ -37,9 +38,18 @@ async function issueSession(res, user) {
 /**
  * POST /api/auth/register
  *
- * After creating the account, the user is NOT marked as verified. They must
- * complete OTP verification (sent to their email) before they can use the
- * higher daily quota (AUTH_DAILY_ANALYSIS_LIMIT).
+ * NEW FLOW (signup → OTP → verify → account):
+ *   1. Validate input.
+ *   2. If a real User with this email already exists → EMAIL_TAKEN (normal rejection).
+ *   3. Otherwise, **upsert/replace** a PendingSignup row for this email (so an abandoned
+ *      signup from a previous attempt is replaced with a fresh OTP, never "email already
+ *      exists").
+ *   4. Issue a 6-digit OTP, store its bcrypt hash on the pending record, send it by email.
+ *   5. Return immediately. **No User is created. No token is issued.**
+ *
+ * The caller (Register.jsx) receives the email and should navigate straight to
+ * /verify-email. If the email send fails (SMTP down, timeout, etc.) the frontend will
+ * surface the error and the user can retry; no User record is orphaned.
  */
 export async function register(req, res, next) {
   try {
@@ -47,8 +57,9 @@ export async function register(req, res, next) {
       requireName: true,
     });
 
-    const existing = await User.findOne({ email }).lean();
-    if (existing) {
+    // 1. Real User with this email already exists → normal signup rejection.
+    const existingUser = await User.findOne({ email }).lean();
+    if (existingUser) {
       throw new AppError(
         "An account with this email already exists.",
         409,
@@ -56,28 +67,47 @@ export async function register(req, res, next) {
       );
     }
 
-    const passwordHash = await User.hashPassword(password);
-    const user = await User.create({ name, email, passwordHash });
-
-    // Merge guest→user quota BEFORE clearing the guest cookie.
-    if (req.guestSessionId) {
-      try {
-        await mergeGuestUsage(req.guestSessionId, user._id.toString());
-      } catch (mergeErr) {
-        console.error("[ auth ] mergeGuestUsage failed after register:", mergeErr.message);
-      }
-      clearGuestSession(res);
+    // 2. Check if a pending signup already exists for this email. If so, we replace it
+    //    with a fresh OTP instead of returning "email already exists". The user can
+    //    always retry signup with the same email if they abandoned a previous attempt.
+    const existingPending = await PendingSignup.findOne({ email }).lean();
+    if (existingPending) {
+      // There's an existing pending record — replace it with a fresh OTP instead of
+      // returning "email already exists". The TTL index still cleans up if this one is
+      // also abandoned.
+      logger.info(
+        "[ auth ] Replacing existing pending signup for %s (new attempt)",
+        email,
+      );
+      await PendingSignup.deleteOne({ _id: existingPending._id });
     }
 
-    // Issue and send OTP to verify the email.
-    const code = await user.issueOtp();
+    // 3. Create (or recreate) the pending signup row. Password is hashed here so it's
+    //    never stored in plaintext; it will be copied into the real User only after OTP
+    //    verification succeeds.
+    const passwordHash = await User.hashPassword(password);
+    const pending = await PendingSignup.create({
+      email,
+      name,
+      passwordHash,
+      guestSessionId: req.guestSessionId ?? null,
+      // Set expires to now + 24h so the TTL index cleans up abandoned signups
+      // automatically. After that window the user must start signup over.
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+
+    // 4. Issue OTP + send email. If this fails we do NOT create a User; the pending row
+    //    can be cleaned up by the TTL index eventually, and the user can retry signup.
+    const code = await pending.issueOtp();
     await sendOtpEmail(email, code);
 
-    const { token, user: publicUser } = await issueSession(res, user);
+    // 5. Respond immediately — no User, no token. The frontend navigates to
+    //    /verify-email while the email is in flight (or already delivered).
+    res.setHeader("Cache-Control", "no-store");
     sendSuccess(
       res,
-      { token, user: publicUser, requiresVerification: true },
-      "Account created. Please check your email for a verification code.",
+      { pendingId: pending._id.toString(), email },
+      "Account pre-registration complete. Please check your email for a verification code.",
       201,
     );
   } catch (err) {
@@ -224,10 +254,24 @@ export async function sendOtp(req, res, next) {
 /**
  * POST /api/auth/otp/verify
  *
- * Verifies a 6-digit code against the stored hash. On success, marks the user
- * as verified (isVerified = true) and clears OTP state.
+ * NEW FLOW (verify OTP → create account):
+ *   1. Validate input.
+ *   2. Look for a **pending signup** for this email first.
+ *      - If found: verify the OTP against the pending signup's stored hash.
+ *        - If OTP is valid → create a real User from the pending signup, mark it
+ *          verified, merge guest quota, clear guest cookie, and return a token + user.
+ *        - If OTP is invalid/expired/locked → return an appropriate error.
+ *   3. If no pending signup exists, fall back to the existing User-based flow
+ *      (for backward compatibility with any existing unverified Users that might exist
+ *      in the DB from before this change).
+ *      - Look up a real User by email.
+ *      - If found and OTP verifies → mark as verified, return user.
+ *      - If not found → INVALID_CODE.
  *
- * Rate-limited to 5 attempts per 10 minutes per IP to prevent brute force.
+ * This design ensures that:
+ *   - A pending signup is ALWAYS verified first (new signups).
+ *   - Any legacy unverified Users (from before this change) still work.
+ *   - A User is NEVER created before OTP verification succeeds.
  */
 export async function verifyOtp(req, res, next) {
   try {
@@ -249,6 +293,81 @@ export async function verifyOtp(req, res, next) {
     }
 
     const emailLower = email.trim().toLowerCase();
+
+    // 1. Check for a pending signup first (new signups).
+    const pending = await PendingSignup.findOne({ email: emailLower }).lean();
+    if (pending) {
+      const livePending = await PendingSignup.findById(pending._id);
+      if (!livePending) {
+        // Pending was cleaned up between the find and this call.
+        throw new AppError(
+          "Verification code is invalid or expired.",
+          400,
+          "INVALID_CODE",
+        );
+      }
+
+      const result = await livePending.verifyOtp(code);
+      if (!result.ok) {
+        // Map the verification result reason to a user-friendly message.
+        const messages = {
+          NO_OTP: "No verification code is pending. Request a new one.",
+          EXPIRED: "The verification code has expired. Request a new one.",
+          LOCKED_OUT: "Too many failed attempts. Please request a new code.",
+          WRONG: "Invalid verification code.",
+        };
+        throw new AppError(
+          messages[result.reason] ?? "Verification failed.",
+          400,
+          "INVALID_CODE",
+        );
+      }
+
+      // OTP verified! Now create the real User from the pending signup.
+
+      // Create the real User. At this point the OTP has been verified, so this is the
+      // moment the account becomes "real" in the system.
+      const passwordHash = livePending.passwordHash;
+      if (!passwordHash) {
+        throw new AppError("Pending signup has no password hash.", 400, "VALIDATION_ERROR");
+      }
+
+      const user = await User.create({
+        name: livePending.name,
+        email: emailLower,
+        passwordHash,
+      });
+
+      // Mark as verified (the OTP just proved email ownership).
+      user.isVerified = true;
+      await user.save({ validateBeforeSave: false });
+
+      // Merge guest→user quota BEFORE clearing the guest cookie.
+      if (livePending.guestSessionId) {
+        try {
+          await mergeGuestUsage(livePending.guestSessionId, user._id.toString());
+        } catch (mergeErr) {
+          console.error("[ auth ] mergeGuestUsage failed after verify:", mergeErr.message);
+        }
+        clearGuestSession(res);
+      }
+
+      // Clean up the pending signup record since we've converted it to a real User.
+      await PendingSignup.deleteOne({ _id: livePending._id });
+
+      // Issue a session token for the newly created User.
+      const { token, user: publicUser } = await issueSession(res, user);
+      res.setHeader("Cache-Control", "no-store");
+      sendSuccess(
+        res,
+        { token, user: publicUser, requiresVerification: false },
+        "Email verified successfully. Your account has been created.",
+        200,
+      );
+      return;
+    }
+
+    // 2. No pending signup — fall back to existing User-based flow.
     const user = await User.findOne({ email: emailLower }).select("+passwordHash");
     if (!user) {
       throw new AppError(
@@ -278,6 +397,29 @@ export async function verifyOtp(req, res, next) {
       res,
       { user: user.toPublicJSON() },
       "Email verified successfully.",
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+
+/**
+ * DELETE /api/auth/pending-signups/cleanup
+ *
+ * Manual cleanup endpoint for expired pending signups.
+ * MongoDB's TTL index on `expires` already removes these documents automatically,
+ * but this endpoint provides an explicit trigger and a way to monitor how many
+ * abandoned signups get cleaned up.
+ */
+export async function cleanupExpiredPendingSignups(req, res, next) {
+  try {
+    const cutoff = new Date();
+    const result = await PendingSignup.deleteMany({ expires: { $lte: cutoff } });
+    sendSuccess(
+      res,
+      { deletedCount: result.deletedCount },
+      "Expired pending signups cleaned up.",
     );
   } catch (err) {
     next(err);

@@ -61,7 +61,11 @@ export default function OtpVerify() {
     setLoading(true);
     try {
       await verifyOtp({ email: email.trim(), code });
-      // Refresh the user so isVerified is reflected, then go to dashboard.
+      // On success, the user is redirected to /dashboard.
+      // If this was a new signup (pending→user), the backend creates the User and
+      // returns a token. The AuthContext's login() will pick up the token from the
+      // response and set the user. If refreshUser is available, call it to ensure
+      // the local user state is up to date.
       if (refreshUser) await refreshUser();
       navigate("/dashboard", { replace: true });
     } catch (err) {
