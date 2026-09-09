@@ -20,12 +20,13 @@ const router = Router();
 //
 // Quota order matters:
 //   1. attachOptionalUser — resolves req.user so the quota middleware can split
-//      guest (per-IP, in-memory) from authenticated (per-account, DB) limits.
+//      guest (per-session, DB via DailyUsage) from authenticated (per-account, DB)
+//      limits.
 //   2. analysisQuota — enforces the cooldown and the daily cap for BOTH guests
 //      and authenticated users, BEFORE upload so a rejected request never writes
 //      a temp file. The daily cap counts only SUCCESSFUL analyses (guests:
-//      in-memory via recordGuestAnalysis; authed: Analysis documents), so
-//      validation/AI/cooldown failures never consume quota.
+//      DB-backed via DailyUsage by guest session ID; authed: Analysis documents),
+//      so validation/AI/cooldown failures never consume quota.
 //   3. uploadMiddleware — only requests that passed quota touch the disk.
 router.post(
   "/",

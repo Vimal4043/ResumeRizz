@@ -25,57 +25,58 @@ export const env = {
   // AI reliability settings. Retries apply ONLY to transient failures
   // (503/unavailable, timeouts, empty responses) — never to auth errors,
   // malformed requests, or daily quota exhaustion.
-  aiMaxRetries: Math.max(0, Number(process.env.AI_MAX_RETRIES) || 2),
-  // Base delay for exponential backoff between retry attempts (ms).
-  aiRetryBaseDelayMs: Math.max(100, Number(process.env.AI_RETRY_BASE_DELAY_MS) || 1_000),
+  // HARDCODED (not env-configurable by design):
+  //   - AI_MAX_RETRIES = 2 (extra attempts for the primary model)
+  aiMaxRetries: 2,
+  // Base delay (ms) for exponential backoff between retry attempts (~1s, ~2s).
+  // HARDCODED (not env-configurable by design): AI_RETRY_BASE_DELAY_MS = 1000.
+  aiRetryBaseDelayMs: 1_000,
   clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
   mongodbUri: process.env.MONGODB_URI || "",
   jwtSecret: process.env.JWT_SECRET || "",
   // Token lifetime. 7 days is a reasonable default for a web app; tokens are
   // held in memory/localStorage client-side, never in URLs.
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  // Application-level analysis quota temporarily disabled.
-  // Re-enable after monitoring real usage and establishing production limits.
-  // Restore these fields together with the limiters in routes/analysisRoutes.js:
-  //   guestAnalysisLimit: Number(process.env.GUEST_ANALYSIS_LIMIT) || 5,
-  //   guestAnalysisWindowMs:
-  //     (Number(process.env.GUEST_ANALYSIS_WINDOW_MINUTES) || 15) * 60 * 1000,
-  //   authAnalysisLimit: Number(process.env.AUTH_ANALYSIS_LIMIT) || 30,
-  //   authAnalysisWindowMs:
-  //     (Number(process.env.AUTH_ANALYSIS_WINDOW_HOURS) || 24) * 60 * 60 * 1000,
-  // Hard ceiling for one Gemini HTTP attempt. Past this, the attempt is aborted
-  // and (for transient errors) retried within the configured retry budget
-  // instead of hanging. Supports the newer AI_REQUEST_TIMEOUT_MS name and keeps
-  // the legacy AI_TIMEOUT_MS as a compatible fallback.
-  aiRequestTimeoutMs:
-    Number(process.env.AI_REQUEST_TIMEOUT_MS) ||
-    Number(process.env.AI_TIMEOUT_MS) ||
-    60_000,
-  // Overall wall-clock budget (ms) for the ENTIRE generateContent call across
-  // all attempts and the fallback model. Prevents a worst case of
-  // (1 + AI_MAX_RETRIES) × models × AI_REQUEST_TIMEOUT_MS of user waiting
-  // when the provider hangs. Defaults to two per-attempt timeouts: at least
-  // two full attempts always get a chance, but a hanging provider can never
-  // hold a user request for more than ~2× the per-attempt timeout.
-  aiTotalBudgetMs:
-    Number(process.env.AI_TOTAL_BUDGET_MS) ||
-    (Number(process.env.AI_REQUEST_TIMEOUT_MS) ||
-      Number(process.env.AI_TIMEOUT_MS) ||
-      60_000) *
-      2,
-  // Maximum accepted job-description length (defends the AI prompt + DB).
-  maxJobDescriptionLength: Number(process.env.MAX_JOB_DESCRIPTION_LENGTH) || 20_000,
-  // Maximum accepted resume upload size (multer + frontend stay in sync).
-  maxUploadBytes: Number(process.env.MAX_UPLOAD_MB) * 1024 * 1024 || 5 * 1024 * 1024,
-  // ---- Analysis quota & cooldown (application-level, re-enabled) ----
-  // Guests are limited per IP (in-memory), authenticated users per account
-  // (persisted in MongoDB via the Analysis collection).
-  guestDailyAnalysisLimit: Number(process.env.GUEST_DAILY_ANALYSIS_LIMIT) || 5,
-  authDailyAnalysisLimit: Number(process.env.AUTH_DAILY_ANALYSIS_LIMIT) || 20,
+  // ---- Analysis quota & cooldown (application-level) ----
+  // HARDCODED (not env-configurable by design):
+  //   - Guest: 1 successful analysis per guest session per UTC day
+  //   - Verified user: 2 successful analyses per account per UTC day
+  guestDailyAnalysisLimit: 1,
+  authDailyAnalysisLimit: 2,
   // Minimum time between two analyses (any user). Prevents rapid-fire usage
   // and accidental double-runs; applies to SUCCESSFUL analyses only.
   analysisCooldownMs:
     (Number(process.env.ANALYSIS_COOLDOWN_MINUTES) || 10) * 60 * 1000,
+  // ---- Email (nodemailer) ----
+  // Empty host/port means "no SMTP configured" → dev fallback (log + file).
+  smtpFrom: process.env.SMTP_FROM || "no-reply@example.com",
+  // Hard ceiling for one Gemini HTTP attempt (120s). Past this, the attempt is
+  // aborted and (for transient errors) retried within the retry budget instead
+  // of hanging.
+  // HARDCODED (not env-configurable by design): AI_REQUEST_TIMEOUT_MS = 120000.
+  aiRequestTimeoutMs: 120_000,
+  // Overall wall-clock budget (ms) for the ENTIRE generateContent call across
+  // all attempts and the fallback model. Prevents a hanging provider from
+  // holding a user request indefinitely.
+  // HARDCODED (not env-configurable by design): 240000 (2x the per-attempt timeout).
+  aiTotalBudgetMs: 240_000,
+  // HARDCODED (not env-configurable by design):
+  //   - Job descriptions longer than 20,000 characters are rejected.
+  maxJobDescriptionLength: 20_000,
+  //   - Resume uploads larger than 5 MB are rejected (multer + frontend stay
+  //     in sync; the client hardcodes the same 5 MB limit).
+  maxUploadBytes: 5 * 1024 * 1024,
+  smtpHost: process.env.SMTP_HOST || "",
+  smtpPort: Number(process.env.SMTP_PORT) || 0,
+  smtpUser: process.env.SMTP_USER || "",
+  smtpPass: process.env.SMTP_PASS || "",
+  smtpSecure: process.env.SMTP_SECURE === "true",
+  // Per-endpoint rate limits for the auth endpoints (IP-based, express-rate-limit
+  // compatible shapes). These are applied in authRoutes.js.
+  sendOtpWindowMs: 10 * 60 * 1000, // 10 minutes
+  sendOtpMax: 3,
+  verifyOtpWindowMs: 10 * 60 * 1000, // 10 minutes
+  verifyOtpMax: 5,
   uploadsDir: path.join(projectRoot, "uploads"),
 };
 

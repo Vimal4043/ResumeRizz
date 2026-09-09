@@ -5,6 +5,7 @@ import Navbar from "./components/layout/Navbar.jsx";
 import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
+import OtpVerify from "./pages/OtpVerify.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import AnalyzeResume from "./pages/AnalyzeResume.jsx";
 import AnalysisResult from "./pages/AnalysisResult.jsx";
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/verify-email" element={<OtpVerify />} />
             {/* Analysis is public — no login required. Guests get results and a
                 "save" CTA; logged-in users' analyses are auto-saved. */}
             <Route path="/analyze" element={<AnalyzeResume />} />

@@ -211,12 +211,13 @@ Documented as **names only** — never put real secrets in this file.
 | `MONGODB_URI` | MongoDB connection string |
 | `JWT_SECRET` | Secret used to sign JWTs |
 | `JWT_EXPIRES_IN` | Token lifetime (default `7d`) |
-| `MAX_JOB_DESCRIPTION_LENGTH` | Maximum accepted JD length in characters (default `20000`) |
-| `MAX_UPLOAD_MB` | Maximum resume upload size in MB (default `5`) |
-| `GUEST_DAILY_ANALYSIS_LIMIT` | Guest analyses per IP per UTC day (default `5`) |
-| `AUTH_DAILY_ANALYSIS_LIMIT` | Analyses per account per UTC day (default `20`) |
 | `ANALYSIS_COOLDOWN_MINUTES` | Minimum minutes between two successful analyses (default `10`) |
-| `LOG_LEVEL` | Logger verbosity: `error`, `warn`, `info`, `debug` (default `info`) |
+
+> **Note:** The job-description limit (`20000` chars), upload cap (`5` MB), log
+> level (`info`), guest/auth daily limits (`1`/`2`), and OTP settings (6-digit
+> code, 10-minute validity, 5 attempts) are hardcoded in
+> `server/config/env.js` / `server/utils/logger.js` — setting them in `.env`
+> has no effect.
 
 ### Client (`client/.env`, optional for local development)
 

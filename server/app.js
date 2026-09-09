@@ -8,6 +8,7 @@ import {
   errorMiddleware,
   notFoundMiddleware,
 } from "./middleware/errorMiddleware.js";
+import { guestSessionMiddleware } from "./middleware/guestSessionMiddleware.js";
 import healthRoutes from "./routes/healthRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import analysisRoutes from "./routes/analysisRoutes.js";
@@ -43,6 +44,21 @@ const apiLimiter = rateLimit({
   },
 });
 app.use("/api", apiLimiter);
+
+// ---------------------------------------------------------------------------
+// Guest session + quota on every API request
+// ---------------------------------------------------------------------------
+// guestSessionMiddleware must run BEFORE auth middleware so req.guestSessionId
+// is set for unauthenticated requests. It is applied to /api/auth and
+// /api/analysis (NOT /api/health — the health check should not set cookies).
+//
+// The analysisQuota middleware is exported but applied per-route in
+// routes/analysisRoutes.js so it can share ordering with attachOptionalUser
+// and uploadMiddleware. The function is re-exported here for any future global
+// usage; the current route-level wiring is explicit by design.
+
+app.use("/api/auth", guestSessionMiddleware);
+app.use("/api/analysis", guestSessionMiddleware);
 
 // ---------------------------------------------------------------------------
 // API routes → controllers (no business logic lives in these definitions)

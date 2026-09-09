@@ -34,7 +34,16 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await register(form.name.trim(), form.email.trim(), form.password);
+      const result = await register(
+        form.name.trim(),
+        form.email.trim(),
+        form.password,
+      );
+      // If the backend requires email verification, redirect to the OTP page.
+      if (result.requiresVerification) {
+        navigate("/verify-email", { replace: true, state: { email: form.email.trim() } });
+        return;
+      }
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(getErrorMessage(err, "Could not create your account."));

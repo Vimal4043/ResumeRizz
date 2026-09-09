@@ -122,10 +122,11 @@ export async function analyze(req, res) {
       }
     }
 
-    // Guest cooldown bookkeeping: only SUCCESSFUL analyses start the 10-minute
-    // cooldown clock (a failed/invalid attempt never locks the user out).
+    // Guest quota bookkeeping: only SUCCESSFUL analyses consume the daily quota
+    // and start the cooldown clock (a failed/invalid attempt never locks the user
+    // out). Uses the guest session ID (DB-backed DailyUsage) rather than raw IP.
     if (!isAuthenticated) {
-      recordGuestAnalysis(req.ip);
+            await recordGuestAnalysis(req.guestSessionId);
     }
 
     return sendSuccess(

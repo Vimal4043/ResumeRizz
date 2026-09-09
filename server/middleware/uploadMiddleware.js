@@ -6,7 +6,7 @@ import { env } from "../config/env.js";
 import { ValidationError } from "../utils/errors.js";
 
 const ALLOWED_MIME_TYPES = ["application/pdf"];
-// Centralized in config/env.js (MAX_UPLOAD_MB, default 5 MB) so the server and
+// Centralized in config/env.js (hardcoded 5 MB) so the server and
 // the frontend's MAX_FILE_SIZE_BYTES stay in sync from one place.
 const MAX_FILE_SIZE_BYTES = env.maxUploadBytes;
 

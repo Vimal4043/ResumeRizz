@@ -147,7 +147,7 @@ console.log("=== C. Protected routes still require auth ===");
   check("DELETE /:id without token → 401", del.status === 401, `got ${del.status}`);
 }
 
-console.log("=== D. No application-level analysis quota ===");
+console.log("=== D. Analysis quota is bypassed in test mode ===");
 {
   // Application-level analysis quota temporarily disabled.
   // Re-enable after monitoring real usage and establishing production limits.

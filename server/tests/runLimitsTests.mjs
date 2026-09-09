@@ -13,9 +13,6 @@ import assert from "node:assert/strict";
 
 // Config overrides must be set BEFORE env.js is imported (ESM import hoisting).
 process.env.NODE_ENV = "test";
-process.env.AI_RETRY_BASE_DELAY_MS = "50";
-process.env.AI_REQUEST_TIMEOUT_MS = "120000";
-process.env.AI_TOTAL_BUDGET_MS = ""; // use default derivation
 process.env.GEMINI_FALLBACK_MODEL = "gemini-3.6-flash-lite";
 
 const { env } = await import("../config/env.js");
@@ -40,22 +37,14 @@ async function test(name, fn) {
 // ---------- A. Config defaults & bounds ----------
 console.log("=== A. Config defaults & bounds ===");
 
-await test("sensible production defaults are set", () => {
+await test("hardcoded production values are set", () => {
   assert.equal(env.maxJobDescriptionLength, 20_000);
   assert.equal(env.maxUploadBytes, 5 * 1024 * 1024);
   assert.equal(env.aiMaxRetries, 2);
-  // Base delay is overridden to 50ms in this test file for speed; env.js clamps
-  // it to a 100ms minimum (by design) so production can never set a 0/absurd delay.
-  assert.equal(env.aiRetryBaseDelayMs, Math.max(100, Number(process.env.AI_RETRY_BASE_DELAY_MS)));
-  // Timeout honors AI_REQUEST_TIMEOUT_MS → legacy AI_TIMEOUT_MS (may be set in
-  // the local .env) → 60s default.
-  const expectedTimeout =
-    Number(process.env.AI_REQUEST_TIMEOUT_MS) ||
-    Number(process.env.AI_TIMEOUT_MS) ||
-    60_000;
-  assert.equal(env.aiRequestTimeoutMs, expectedTimeout);
+  assert.equal(env.aiRetryBaseDelayMs, 1000);
+  assert.equal(env.aiRequestTimeoutMs, 120_000);
   // Overall budget = 2 × per-attempt timeout → bounded worst-case wait.
-  assert.equal(env.aiTotalBudgetMs, expectedTimeout * 2);
+  assert.equal(env.aiTotalBudgetMs, 240_000);
 });
 
 await test("retry config can never be negative/unbounded", () => {

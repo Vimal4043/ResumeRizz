@@ -1,6 +1,7 @@
 const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 
-const configuredLevel = (process.env.LOG_LEVEL || "info").toLowerCase();
+// Hardcoded (not env-configurable by design).
+const configuredLevel = "info";
 
 function log(level, message) {
   if (LEVELS[level] > LEVELS[configuredLevel]) return;

@@ -15,11 +15,14 @@ import assert from "node:assert/strict";
 
 // Set config BEFORE importing env.js / gemini.js (ESM imports are hoisted, so
 // everything is loaded dynamically after the env overrides).
-process.env.AI_RETRY_BASE_DELAY_MS = "50";
 process.env.GEMINI_FALLBACK_MODEL = "gemini-3.6-flash-lite";
 
 const { gemini, classifyGeminiError } = await import("../services/ai/gemini.js");
 const { AppError } = await import("../utils/errors.js");
+const { env } = await import("../config/env.js");
+// Speed up retry backoff for tests only (production code stays hardcoded at
+// 1000ms). gemini.js reads env.aiRetryBaseDelayMs dynamically per attempt.
+env.aiRetryBaseDelayMs = 50;
 
 let passed = 0;
 function check(name, fn) {

@@ -7,7 +7,7 @@ import api from "./api.js";
 
 export async function registerUser({ name, email, password }) {
   const { data } = await api.post("/auth/register", { name, email, password });
-  return data.data; // { token, user }
+  return data.data; // { token, user, requiresVerification }
 }
 
 export async function loginUser({ email, password }) {
@@ -22,4 +22,16 @@ export async function logoutUser() {
 export async function fetchCurrentUser() {
   const { data } = await api.get("/auth/me");
   return data.data.user;
+}
+
+// ---- OTP endpoints ----
+
+export async function sendOtp(email) {
+  const { data } = await api.post("/auth/otp/send", { email });
+  return data;
+}
+
+export async function verifyOtp({ email, code }) {
+  const { data } = await api.post("/auth/otp/verify", { email, code });
+  return data.data; // { user }
 }

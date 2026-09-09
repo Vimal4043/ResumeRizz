@@ -1,29 +1,30 @@
 /**
  * Analysis quota & cooldown middleware.
  *
- * Limits (all configurable via env):
- *   - Guest (per IP):   GUEST_DAILY_ANALYSIS_LIMIT (5) SUCCESSFUL analyses per UTC day
- *   - Authenticated:    AUTH_DAILY_ANALYSIS_LIMIT (20) analyses per UTC day
- *   - Everyone:         ANALYSIS_COOLDOWN_MINUTES (10) minimum gap between
- *                       two SUCCESSFUL analyses
+ * Limits (hardcoded in config/env.js — NOT env-configurable by design):
+ *   - Guest (per session): 1 SUCCESSFUL analysis per UTC day
+ *   - Authenticated:       2 analyses per UTC day
+ *   - Everyone:            ANALYSIS_COOLDOWN_MINUTES minimum gap between
+ *                          two SUCCESSFUL analyses (env-configurable, default 10)
  *
  * Design notes:
- *   - Guest DAILY quota counts only SUCCESSFUL analyses (in-memory per IP),
- *     via recordGuestAnalysis on the success path. This fixes the bug where
- *     cooldown rejections / validation / AI failures were charged against the
- *     daily cap — they now leave the count untouched. The check runs before
- *     upload, so quota/cooldown rejections never write a temp file.
- *   - Guest COOLDOWN counts successes only too. A failed attempt never locks a
- *     user out for 10 minutes, and repeated clicks during cooldown leave the
- *     daily quota unchanged.
- *   - In-memory = per process; fine for a single-instance deployment.
- *   - A separate, request-based global rate limit (100 req/15min per IP in
+ *   - Guest DAILY quota counts only SUCCESSFUL analyses, tracked in the
+ *     DailyUsage collection keyed by guest session ID (not raw IP, so
+ *     NAT/shared WiFi does not merge unrelated browsers). Cooldown
+ *     rejections / validation / AI failures leave the count untouched.
+ *     The check runs before upload, so quota/cooldown rejections never
+ *     write a temp file.
+ *   - Guest COOLDOWN counts successes only too. A failed attempt never locks
+ *     a user out, and repeated clicks during cooldown leave quota unchanged.
+ *   - Authenticated daily cap counts only successful (persisted) analyses.
+ *   - A separate request-based global rate limit (100 req/15min per IP in
  *     app.js) still guards against fuzzing/DoS — it is NOT the daily quota.
- *   - Skipped entirely when NODE_ENV=test so the automated suites are unaffected.
+ *   - Skipped entirely when NODE_ENV=test so automated suites are unaffected.
  */
 import { env } from "../config/env.js";
 import { AppError } from "../utils/errors.js";
 import { Analysis } from "../models/Analysis.js";
+import { DailyUsage, utcDateKey } from "../models/DailyUsage.js";
 
 const isTestEnv = () => env.nodeEnv === "test";
 
@@ -39,62 +40,98 @@ function cooldownError(retryAfterMs) {
   return err;
 }
 
-// ---- Guest state (per IP, in-memory, single-instance) ----
-// Only SUCCESSFUL analyses mutate this state, so cooldown rejections and
-// validation/AI failures can never consume a guest's quota.
-const lastGuestAnalysisAt = new Map(); // ip -> timestamp of last successful analysis
-const guestDailySuccesses = new Map(); // ip -> { date: 'YYYY-MM-DD', count }
-
-function utcDateKey() {
-  return new Date().toISOString().slice(0, 10);
+/**
+ * Record a SUCCESSFUL guest analysis: increment the DB-backed daily usage and
+ * start the cooldown clock. Called ONLY from the controller's success path, so
+ * failures (cooldown rejection, validation, AI errors, network) never consume
+ * quota.
+ */
+export async function recordGuestAnalysis(sessionId) {
+  if (typeof sessionId !== "string" || !sessionId) return;
+  const principal = `guest:${sessionId}`;
+  const today = utcDateKey();
+  await DailyUsage.findOneAndUpdate(
+    { principal, date: today },
+    { $inc: { used: 1 } },
+    { upsert: true, returnDocument: "after" },
+  ).catch((err) => {
+    console.error(`[ DailyUsage ] markUsed failed for ${principal}:`, err.message);
+  });
+  recordGuestCooldown(sessionId);
 }
 
-/** @returns {number} SUCCESSFUL guest analyses for this IP today (UTC). */
-export function getGuestDailyCount(ip) {
-  if (typeof ip !== "string") return 0;
-  const entry = guestDailySuccesses.get(ip);
-  if (!entry || entry.date !== utcDateKey()) return 0;
-  return entry.count;
+// ---- Guest cooldown timestamps (in-memory, single-instance) ----
+// Only the cooldown timestamp is kept here; the DAILY COUNT lives in
+// DailyUsage so a restart doesn't lose quota tracking.
+const guestLastAnalysisAt = new Map(); // sessionId -> timestamp
+
+function guestLastSuccess(sessionId) {
+  if (typeof sessionId !== "string" || !sessionId) return null;
+  return guestLastAnalysisAt.get(sessionId) ?? null;
+}
+
+function recordGuestCooldown(sessionId) {
+  if (typeof sessionId !== "string" || !sessionId) return;
+  guestLastAnalysisAt.set(sessionId, Date.now());
 }
 
 /**
- * Record a SUCCESSFUL guest analysis: start the cooldown clock and bump today's
- * success count. Called ONLY from the controller's success path, so failures
- * (cooldown rejection, validation, AI errors, network) never consume quota.
+ * Merge a guest session's today's usage into a verified user's row.
+ * Called by the auth controller after a successful login/register, BEFORE the
+ * guest cookie is cleared.
+ *
+ * The guest's `used` count for today is moved into the user's row (so the
+ * user is never granted a fresh quota on top of what the guest already
+ * consumed). The guest row is then deleted. From that point the user's row
+ * is the single source of truth for that browser.
+ *
+ * @param {string} sessionId - guest session hex id
+ * @param {string} userId    - verified user's MongoDB ObjectId string
+ * @returns {Promise<number>} number of analyses transferred (0 if none)
  */
-export function recordGuestAnalysis(ip) {
-  if (typeof ip !== "string") return;
-  lastGuestAnalysisAt.set(ip, Date.now());
+export async function mergeGuestUsage(sessionId, userId) {
+  if (typeof sessionId !== "string" || !sessionId) return 0;
+  if (typeof userId !== "string" || !userId) return 0;
+
   const today = utcDateKey();
-  const entry = guestDailySuccesses.get(ip);
-  if (!entry || entry.date !== today) {
-    guestDailySuccesses.set(ip, { date: today, count: 1 });
-  } else {
-    entry.count += 1;
+  const guestPrincipal = `guest:${sessionId}`;
+
+  const guestRow = await DailyUsage.findOne({
+    principal: guestPrincipal,
+    date: today,
+  }).lean();
+  if (!guestRow) return 0;
+
+  const transferred = Math.max(0, guestRow.used ?? 0);
+  if (transferred === 0) {
+    await DailyUsage.deleteOne({ principal: guestPrincipal, date: today }).catch(
+      () => {},
+    );
+    return 0;
   }
+
+  await DailyUsage.findOneAndUpdate(
+    { principal: userId, date: today },
+    { $inc: { used: transferred } },
+        { upsert: true, returnDocument: "after" },
+  ).catch(() => {});
+
+  await DailyUsage.deleteOne({ principal: guestPrincipal, date: today }).catch(
+    () => {},
+  );
+
+  return transferred;
 }
 
-// Test seams (used only by server/tests/runQuotaTests.mjs): fast-forward the
-// in-memory guest state so quota/cooldown behavior can be asserted without
-// waiting for the real 10-minute cooldown.
-export function __testClearGuestState() {
-  lastGuestAnalysisAt.clear();
-  guestDailySuccesses.clear();
-}
-export function __testAdvanceGuestCooldowns(msAgo) {
-  const now = Date.now();
-  for (const [ip, ts] of lastGuestAnalysisAt) {
-    lastGuestAnalysisAt.set(ip, now - msAgo);
-  }
-}
-
-// ---- Authenticated daily cap + universal cooldown (DB-based) ----
+// Main quota enforcement — single definition (test seams kept in one place below).
 export async function analysisQuota(req, _res, next) {
   try {
     if (isTestEnv()) return next();
 
-    // Universal 10-minute cooldown between successful analyses.
+    const today = utcDateKey();
+
     if (req.user) {
+      // ---- Authenticated (verified) user ----
       const latest = await Analysis.findOne({ userId: req.user._id })
         .sort({ createdAt: -1 })
         .select("createdAt")
@@ -104,28 +141,30 @@ export async function analysisQuota(req, _res, next) {
         if (elapsed < env.analysisCooldownMs) {
           throw cooldownError(env.analysisCooldownMs - elapsed);
         }
+      }
 
-        // Daily cap for authenticated users (UTC calendar day). Only persisted
-        // (= successful) analyses count.
-        const startOfDay = new Date();
-        startOfDay.setUTCHours(0, 0, 0, 0);
-        const todayCount = await Analysis.countDocuments({
-          userId: req.user._id,
-          createdAt: { $gte: startOfDay },
-        });
-        if (todayCount >= env.authDailyAnalysisLimit) {
-          throw new AppError(
-            `You've reached your daily limit of ${env.authDailyAnalysisLimit} analyses. Your quota resets at midnight UTC.`,
-            429,
-            "DAILY_ANALYSIS_LIMIT_REACHED",
-          );
-        }
+      // Daily cap for authenticated users (UTC calendar day). Only persisted
+      // (= successful) analyses count — and this check must run even when there
+      // is no prior analysis (todayCount is then 0, which is < limit).
+      const startOfDay = new Date();
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const todayCount = await Analysis.countDocuments({
+        userId: req.user._id,
+        createdAt: { $gte: startOfDay },
+      });
+      if (todayCount >= env.authDailyAnalysisLimit) {
+        throw new AppError(
+          `You've reached your daily limit of ${env.authDailyAnalysisLimit} analyses. Your quota resets at midnight UTC.`,
+          429,
+          "DAILY_ANALYSIS_LIMIT_REACHED",
+        );
       }
     } else {
       // ---- Guest path ----
-      // 1) Cooldown (successes only). Rejected here, BEFORE any count change, so
-      //    repeated clicks during cooldown leave the daily quota untouched.
-      const last = lastGuestAnalysisAt.get(req.ip);
+      const sessionId = req.guestSessionId;
+
+      // 1) Cooldown (successes only).
+      const last = guestLastSuccess(sessionId);
       if (last) {
         const elapsed = Date.now() - last;
         if (elapsed < env.analysisCooldownMs) {
@@ -133,9 +172,12 @@ export async function analysisQuota(req, _res, next) {
         }
       }
 
-      // 2) Daily quota (SUCCESSFUL analyses only). A guest that has already
-      //    completed today's limit is rejected before upload/AI runs.
-      const used = getGuestDailyCount(req.ip);
+      // 2) Daily quota (DB-backed via DailyUsage).
+      const guestRow = await DailyUsage.findOne({
+        principal: `guest:${sessionId}`,
+        date: today,
+      }).lean();
+      const used = guestRow?.used ?? 0;
       if (used >= env.guestDailyAnalysisLimit) {
         throw new AppError(
           `You've reached the free daily limit of ${env.guestDailyAnalysisLimit} analyses. Please try again tomorrow or create a free account for more.`,
@@ -149,4 +191,24 @@ export async function analysisQuota(req, _res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+// Test seams (single definition of each — used by the quota test suite).
+export function __testClearGuestCooldownState() {
+  guestLastAnalysisAt.clear();
+}
+export function __testAdvanceGuestCooldowns(msAgo) {
+  const now = Date.now();
+  for (const [sid, ts] of guestLastAnalysisAt) {
+    guestLastAnalysisAt.set(sid, now - msAgo);
+  }
+}
+export const __testClearGuestState = __testClearGuestCooldownState;
+export async function getGuestDailyCount(sessionId) {
+  if (typeof sessionId !== "string" || !sessionId) return 0;
+  const row = await DailyUsage.findOne({
+    principal: `guest:${sessionId}`,
+    date: utcDateKey(),
+  }).lean();
+  return row?.used ?? 0;
 }

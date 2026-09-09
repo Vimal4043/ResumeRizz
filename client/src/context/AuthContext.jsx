@@ -56,6 +56,16 @@ export function AuthProvider({ children }) {
       window.removeEventListener("aijh:unauthenticated", onUnauthenticated);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const me = await fetchCurrentUser();
+      setUser(me);
+      return me;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const login = useCallback(async (email, password) => {
     const { token, user: u } = await loginUser({ email, password });
     storeToken(token);
@@ -64,10 +74,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const register = useCallback(async (name, email, password) => {
-    const { token, user: u } = await registerUser({ name, email, password });
-    storeToken(token);
-    setUser(u);
-    return u;
+    const result = await registerUser({ name, email, password });
+    storeToken(result.token);
+    setUser(result.user);
+    return result;
   }, []);
 
   const logout = useCallback(async () => {
@@ -81,8 +91,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, initializing, login, register, logout }),
-    [user, initializing, login, register, logout],
+    () => ({ user, initializing, login, register, logout, refreshUser }),
+    [user, initializing, login, register, logout, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
