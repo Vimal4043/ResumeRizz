@@ -83,10 +83,13 @@ export async function sendOtpEmail(to, code) {
     });
     logger.info("OTP email sent to %s", to);
   } catch (err) {
-    logger.error("Failed to send OTP email to %s: %s", to, err.message);
-    if (err.response) {
-      logger.error("sendOtpEmail: SMTP server response: %s", err.response);
-    }
+    // Log the full SMTP error details for debugging (no secrets).
+    logger.error("Failed to send OTP email to %s", to);
+    logger.error("  error.message:  %s", err.message);
+    logger.error("  error.code:     %s", err.code ?? "undefined");
+    logger.error("  error.response: %s", err.response ?? "undefined");
+    logger.error("  error.responseCode: %s", err.responseCode ?? "undefined");
+    logger.error("  error.command:  %s", err.command ?? "undefined");
     throw new Error("EMAIL_SEND_FAILED");
   }
 }
