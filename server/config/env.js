@@ -47,9 +47,10 @@ export const env = {
   // and accidental double-runs; applies to SUCCESSFUL analyses only.
   analysisCooldownMs:
     (Number(process.env.ANALYSIS_COOLDOWN_MINUTES) || 10) * 60 * 1000,
-  // ---- Email (nodemailer) ----
-  // Empty host/port means "no SMTP configured" → dev fallback (log + file).
-  smtpFrom: process.env.SMTP_FROM || "no-reply@example.com",
+  // ---- Email (Resend HTTP API) ----
+  // Resend sends email via HTTPS, so no SMTP ports are needed (works on Render Free).
+  resendApiKey: process.env.RESEND_API_KEY || "",
+  resendFrom: process.env.RESEND_FROM || "",
   // Hard ceiling for one Gemini HTTP attempt (120s). Past this, the attempt is
   // aborted and (for transient errors) retried within the retry budget instead
   // of hanging.
@@ -66,11 +67,6 @@ export const env = {
   //   - Resume uploads larger than 5 MB are rejected (multer + frontend stay
   //     in sync; the client hardcodes the same 5 MB limit).
   maxUploadBytes: 5 * 1024 * 1024,
-  smtpHost: process.env.SMTP_HOST || "",
-  smtpPort: Number(process.env.SMTP_PORT) || 0,
-  smtpUser: process.env.SMTP_USER || "",
-  smtpPass: process.env.SMTP_PASS || "",
-  smtpSecure: process.env.SMTP_SECURE === "true",
   // Per-endpoint rate limits for the auth endpoints (IP-based, express-rate-limit
   // compatible shapes). These are applied in authRoutes.js.
   sendOtpWindowMs: 10 * 60 * 1000, // 10 minutes
@@ -85,6 +81,7 @@ const SECRETS = {
   CLIENT_URL: env.clientUrl,
   MONGODB_URI: env.mongodbUri,
   JWT_SECRET: env.jwtSecret,
+  RESEND_API_KEY: env.resendApiKey,
 };
 
 /**

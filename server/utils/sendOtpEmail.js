@@ -1,8 +1,8 @@
 /**
  * Email OTP sending (production path only).
  *
- * The OTP is always delivered via a real SMTP provider (nodemailer).
- * There is no dev/test fallback: if SMTP is not configured or the send
+ * The OTP is always delivered via the Resend HTTP API (no SMTP required).
+ * There is no dev/test fallback: if Resend is not configured or the send
  * fails, the call throws and the controller surfaces the failure instead
  * of leaking the code to logs or temp files.
  *
@@ -12,36 +12,21 @@
  *   - Rate limiting on the /api/auth/otp/send and /verify endpoints prevents
  *     abuse (wired in authRoutes.js).
  *   - Per-account attempt limits (otpAttempts) prevent brute force on the OTP code.
+ *   - The RESEND_API_KEY is never logged or exposed to the client.
  */
 
-import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
 import { logger } from "./logger.js";
 
-/**
- * Build a nodemailer transporter from env, or null when SMTP is not configured.
- * @returns {import("nodemailer").Transporter | null}
- */
-function buildTransporter() {
-  if (!env.smtpHost || !env.smtpPort) return null;
-  return nodemailer.createTransport({
-    host: env.smtpHost,
-    port: Number(env.smtpPort),
-    secure: env.smtpSecure === "true" || env.smtpSecure === true,
-    auth:
-      env.smtpUser && env.smtpPass
-        ? { user: env.smtpUser, pass: env.smtpPass }
-        : undefined,
-  });
-}
+const RESEND_API_URL = "https://api.resend.com/emails";
 
 /**
- * Send a 6-digit OTP to the user's email via SMTP.
+ * Send a 6-digit OTP to the user's email via the Resend HTTP API.
  *
  * @param {string} to - lower-case email address.
  * @param {string} code - 6-digit numeric OTP plaintext.
  * @returns {Promise<void>}
- * @throws {Error} EMAIL_SERVICE_NOT_CONFIGURED when SMTP env is missing.
+ * @throws {Error} EMAIL_SERVICE_NOT_CONFIGURED when Resend env is missing.
  * @throws {Error} EMAIL_SEND_FAILED when the provider rejects the send.
  */
 export async function sendOtpEmail(to, code) {
@@ -67,29 +52,69 @@ export async function sendOtpEmail(to, code) {
     "If you did not request this code, you can safely ignore this email.",
   ].join("\n");
 
-  const transporter = buildTransporter();
-  if (!transporter) {
-    logger.error("sendOtpEmail called with no SMTP configured");
+  // Require both the API key and a verified sender address.
+  if (!env.resendApiKey || !env.resendFrom) {
+    logger.error(
+      "sendOtpEmail: Resend not configured (RESEND_API_KEY=%s, RESEND_FROM=%s)",
+      env.resendApiKey ? "set" : "missing",
+      env.resendFrom ? "set" : "missing",
+    );
     throw new Error("EMAIL_SERVICE_NOT_CONFIGURED");
   }
 
+  const body = JSON.stringify({
+    from: env.resendFrom,
+    to,
+    subject,
+    html,
+    text,
+  });
+
+  const fetchOptions = {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body,
+  };
+
+  // 20-second timeout — Resend is fast, but we never want to hang the request.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20_000);
+
   try {
-    await transporter.sendMail({
-      from: `"ResumeRizz" <${env.smtpFrom || env.smtpUser || "noreply@example.com"}>`,
-      to,
-      subject,
-      html: html,
-      text,
+    const res = await fetch(RESEND_API_URL, {
+      ...fetchOptions,
+      signal: controller.signal,
     });
-    logger.info("OTP email sent to %s", to);
+    const status = res.status;
+
+    if (!res.ok) {
+      // Read the Resend error body for diagnostics.
+      let errorBody = "";
+      try {
+        errorBody = await res.text();
+      } catch {
+        errorBody = "(could not read response body)";
+      }
+      logger.error(
+        "Resend API error: status=%s, body=%s",
+        status,
+        errorBody,
+      );
+      throw new Error("EMAIL_SEND_FAILED");
+    }
+
+    logger.info("OTP email sent to %s (Resend status %s)", to, status);
   } catch (err) {
-    // Log the full SMTP error details for debugging (no secrets).
-    logger.error("Failed to send OTP email to %s", to);
-    logger.error("  error.message:  %s", err.message);
-    logger.error("  error.code:     %s", err.code ?? "undefined");
-    logger.error("  error.response: %s", err.response ?? "undefined");
-    logger.error("  error.responseCode: %s", err.responseCode ?? "undefined");
-    logger.error("  error.command:  %s", err.command ?? "undefined");
+    if (err.message === "EMAIL_SEND_FAILED") {
+      throw err; // Re-throw our own EMAIL_SEND_FAILED errors as-is.
+    }
+    // Network errors, aborts, JSON parse failures, etc.
+    logger.error("Resend request failed for %s: %s", to, err.message);
     throw new Error("EMAIL_SEND_FAILED");
+  } finally {
+    clearTimeout(timeout);
   }
 }
