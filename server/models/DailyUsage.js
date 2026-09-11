@@ -11,7 +11,7 @@ import mongoose from "mongoose";
  *     quota bucket. A session lives as long as its cookie (7 days) or until the
  *     browser clears cookies.
  *   - "{userId}"           — an authenticated user, identified by their MongoDB
- *     ObjectId string. Verified users get the higher daily cap.
+ *     ObjectId string. Authenticated users get the higher daily cap.
  *
  * Every SUCCESSFUL analysis (the one the user actually sees the result for)
  * increments `used` by 1, atomically, via $inc. Failed / rejected requests

@@ -34,14 +34,14 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const result = await register(
+      await register(
         form.name.trim(),
         form.email.trim(),
         form.password,
       );
-      // New flow: on success, navigate straight to /verify-email.
-      // The backend has already sent the OTP; the user completes verification there.
-      navigate("/verify-email", { replace: true, state: { email: form.email.trim() } });
+      // Signup creates the account immediately and logs the user in —
+      // navigate straight to the dashboard.
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(getErrorMessage(err, "Could not create your account."));
     } finally {

@@ -214,8 +214,7 @@ Documented as **names only** — never put real secrets in this file.
 | `ANALYSIS_COOLDOWN_MINUTES` | Minimum minutes between two successful analyses (default `10`) |
 
 > **Note:** The job-description limit (`20000` chars), upload cap (`5` MB), log
-> level (`info`), guest/auth daily limits (`1`/`2`), and OTP settings (6-digit
-> code, 10-minute validity, 5 attempts) are hardcoded in
+> level (`info`), and guest/auth daily limits (`1`/`2`) are hardcoded in
 > `server/config/env.js` / `server/utils/logger.js` — setting them in `.env`
 > has no effect.
 

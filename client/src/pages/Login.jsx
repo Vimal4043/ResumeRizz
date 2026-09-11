@@ -25,23 +25,7 @@ export default function Login() {
       await login(email.trim(), password);
       navigate(from, { replace: true });
     } catch (err) {
-      const msg = getErrorMessage(err, "Could not log you in.");
-      setError(msg);
-      // If the account is unverified, offer a link to the verification page.
-      if (err?.response?.data?.error?.code === "EMAIL_NOT_VERIFIED") {
-        setError(
-          <span>
-            {msg}{" "}
-            <Link
-              to="/verify-email"
-              state={{ email: email.trim() }}
-              className="font-medium text-primary underline"
-            >
-              Verify your email
-            </Link>
-          </span>,
-        );
-      }
+      setError(getErrorMessage(err, "Could not log you in."));
     } finally {
       setLoading(false);
     }

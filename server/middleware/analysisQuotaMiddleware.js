@@ -76,7 +76,7 @@ function recordGuestCooldown(sessionId) {
 }
 
 /**
- * Merge a guest session's today's usage into a verified user's row.
+ * Merge a guest session's today's usage into an authenticated user's row.
  * Called by the auth controller after a successful login/register, BEFORE the
  * guest cookie is cleared.
  *
@@ -86,7 +86,7 @@ function recordGuestCooldown(sessionId) {
  * is the single source of truth for that browser.
  *
  * @param {string} sessionId - guest session hex id
- * @param {string} userId    - verified user's MongoDB ObjectId string
+ * @param {string} userId    - authenticated user's MongoDB ObjectId string
  * @returns {Promise<number>} number of analyses transferred (0 if none)
  */
 export async function mergeGuestUsage(sessionId, userId) {

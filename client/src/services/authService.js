@@ -1,4 +1,4 @@
-import api, { storeToken } from "./api.js";
+import api from "./api.js";
 
 /**
  * Authentication API calls. All endpoints return the `{ success, message, data }`
@@ -7,7 +7,7 @@ import api, { storeToken } from "./api.js";
 
 export async function registerUser({ name, email, password }) {
   const { data } = await api.post("/auth/register", { name, email, password });
-  return data.data; // { pendingId, email } (201, no token — user must verify OTP first)
+  return data.data; // { token, user } — account is created immediately
 }
 
 export async function loginUser({ email, password }) {
@@ -24,21 +24,3 @@ export async function fetchCurrentUser() {
   return data.data.user;
 }
 
-// ---- OTP endpoints ----
-
-export async function sendOtp(email) {
-  const { data } = await api.post("/auth/otp/send", { email });
-  return data;
-}
-
-export async function verifyOtp({ email, code }) {
-  const { data } = await api.post("/auth/otp/verify", { email, code });
-  const result = data.data;
-  // New flow: verifyOtp can return { token, user, requiresVerification } when
-  // a pending signup is converted to a real User. Or just { user } for existing
-  // unverified Users being verified. Always store the token if present.
-  if (result.token) {
-    storeToken(result.token);
-  }
-  return result;
-}

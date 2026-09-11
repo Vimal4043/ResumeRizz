@@ -40,17 +40,13 @@ export const env = {
   // ---- Analysis quota & cooldown (application-level) ----
   // HARDCODED (not env-configurable by design):
   //   - Guest: 1 successful analysis per guest session per UTC day
-  //   - Verified user: 2 successful analyses per account per UTC day
+  //   - Authenticated user: 2 successful analyses per account per UTC day
   guestDailyAnalysisLimit: 1,
   authDailyAnalysisLimit: 2,
   // Minimum time between two analyses (any user). Prevents rapid-fire usage
   // and accidental double-runs; applies to SUCCESSFUL analyses only.
   analysisCooldownMs:
     (Number(process.env.ANALYSIS_COOLDOWN_MINUTES) || 10) * 60 * 1000,
-  // ---- Email (Resend HTTP API) ----
-  // Resend sends email via HTTPS, so no SMTP ports are needed (works on Render Free).
-  resendApiKey: process.env.RESEND_API_KEY || "",
-  resendFrom: process.env.RESEND_FROM || "",
   // Hard ceiling for one Gemini HTTP attempt (120s). Past this, the attempt is
   // aborted and (for transient errors) retried within the retry budget instead
   // of hanging.
@@ -67,12 +63,6 @@ export const env = {
   //   - Resume uploads larger than 5 MB are rejected (multer + frontend stay
   //     in sync; the client hardcodes the same 5 MB limit).
   maxUploadBytes: 5 * 1024 * 1024,
-  // Per-endpoint rate limits for the auth endpoints (IP-based, express-rate-limit
-  // compatible shapes). These are applied in authRoutes.js.
-  sendOtpWindowMs: 10 * 60 * 1000, // 10 minutes
-  sendOtpMax: 3,
-  verifyOtpWindowMs: 10 * 60 * 1000, // 10 minutes
-  verifyOtpMax: 5,
   uploadsDir: path.join(projectRoot, "uploads"),
 };
 
@@ -81,7 +71,6 @@ const SECRETS = {
   CLIENT_URL: env.clientUrl,
   MONGODB_URI: env.mongodbUri,
   JWT_SECRET: env.jwtSecret,
-  RESEND_API_KEY: env.resendApiKey,
 };
 
 /**
