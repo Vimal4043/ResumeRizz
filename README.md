@@ -154,20 +154,12 @@ The daily analysis limit is enforced in the browser (`localStorage`) — one suc
 | `npm run build` | Production build |
 | `npm run preview` | Preview the production build |
 | `npm run lint` | Lint with oxlint |
-| `npm test` | Run unit tests with Vitest |
-
 ### Server
 
 | Command | Description |
 | --- | --- |
 | `npm run dev` | Start with nodemon |
 | `npm start` | Start in production mode |
-| `npm run test:errors` | Error-contract tests |
-| `npm run test:limits` | Input-limit tests |
-| `npm run test:reliability` | AI reliability tests |
-| `npm run test:public` | Public analysis flow tests |
-| `npm run test:persistence` | Persistence flow tests (requires MongoDB + Gemini key) |
-| `npm test` | Run all of the above |
 
 ## Deployment
 
