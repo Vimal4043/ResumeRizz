@@ -4,10 +4,8 @@ import { AppError, ValidationError } from "../utils/errors.js";
 import { sendSuccess } from "../utils/response.js";
 import { logger } from "../utils/logger.js";
 import { analysisService } from "../services/ai/analysisService.js";
-import { recordGuestAnalysis } from "../middleware/analysisQuotaMiddleware.js";
 import { Resume } from "../models/Resume.js";
 import { Analysis } from "../models/Analysis.js";
-import { User } from "../models/User.js";
 
 /**
  * Minimum meaningful length for a job description.
@@ -34,7 +32,7 @@ const MIN_JOB_DESCRIPTION_LENGTH = 40;
  * persisted) and an `analysisId` when it was. The uploaded PDF is a temporary
  * working file and is always cleaned up (guest or not); the PDF is never stored.
  */
-export async function analyze(req, res) {
+export async function analyze(req, res, next) {
   const filePath = req.file?.path;
   const isAuthenticated = Boolean(req.user);
 
@@ -99,34 +97,11 @@ export async function analyze(req, res) {
           matchScore: result.analysis.matchScore,
         });
         analysisId = doc._id.toString();
-
-        // Lightweight usage tracking (no billing): count analyses and keep the
-        // last-analysis timestamp on the account. Best-effort — a tracking
-        // failure must never lose the user's result. No resume/JD content is
-        // recorded here.
-        await User.findByIdAndUpdate(
-          req.user._id,
-          {
-            $inc: { "usage.analysisCount": 1 },
-            $set: { "usage.lastAnalysisAt": new Date() },
-          },
-        ).catch((trackErr) => {
-          logger.warn(
-            `Failed to update usage stats for user ${req.user._id}: ${trackErr.message}`,
-          );
-        });
       } catch (persistErr) {
         logger.error(
           `Failed to persist analysis for user ${req.user._id}: ${persistErr.message}`,
         );
       }
-    }
-
-    // Guest quota bookkeeping: only SUCCESSFUL analyses consume the daily quota
-    // and start the cooldown clock (a failed/invalid attempt never locks the user
-    // out). Uses the guest session ID (DB-backed DailyUsage) rather than raw IP.
-    if (!isAuthenticated) {
-            await recordGuestAnalysis(req.guestSessionId);
     }
 
     return sendSuccess(
@@ -138,6 +113,8 @@ export async function analyze(req, res) {
       },
       "Resume analysis completed",
     );
+  } catch (err) {
+    return next(err);
   } finally {
     // Always remove the temporary upload, regardless of success, failure, or
     // whether the caller was a guest or an authenticated user.

@@ -10,7 +10,7 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-const TOKEN_KEY = "aijh_token";
+const TOKEN_KEY = "rrizz_token";
 
 export function getStoredToken() {
   try {
@@ -43,7 +43,7 @@ api.interceptors.response.use(
   (error) => {
     if (error?.response?.status === 401) {
       storeToken(null);
-      window.dispatchEvent(new Event("aijh:unauthenticated"));
+      window.dispatchEvent(new Event("rrizz:unauthenticated"));
     }
     return Promise.reject(error);
   },

@@ -6,15 +6,16 @@
  * Covers the parts that do NOT require a live Gemini call or a completed run:
  *   - POST /api/analysis is public (401 no longer returned for guests).
  *   - Authenticated-only routes (/history, /:id GET/DELETE) stay protected.
- *   - Application-level analysis quota exists but is bypassed in NODE_ENV=test.
+ *   - The server enforces NO analysis limit: the daily limit is
+ *     enforced entirely in the browser (localStorage).
  *   - Guests can actually upload a PDF (multipart passes the upload middleware).
  *
  * The persistence assertions (guest leaves no DB record / logged-in user's
  * analysis is saved to their own account) require a real Gemini call, so those
  * are run manually against a live server.
  */
-// Quota middleware is skipped in NODE_ENV=test; set it before app.js loads
-// (ESM import hoisting → dynamic import).
+// Set NODE_ENV=test before app.js loads so the API rate limiter is skipped
+// and the run stays deterministic (ESM import hoisting → dynamic import).
 process.env.NODE_ENV = "test";
 const { app } = await import("../app.js");
 
@@ -92,7 +93,7 @@ const base = `http://127.0.0.1:${server.address().port}/api`;
 let ipCounter = 0;
 function guestHeaders() {
   // Unique synthetic guest IP so the rate-limit test never collides with a
-  // real client and doesn't trip the shared /api quota.
+  // real client and doesn't trip the shared /api rate limiter.
   ipCounter += 1;
   return {
     "Content-Type": "application/json",
@@ -147,14 +148,13 @@ console.log("=== C. Protected routes still require auth ===");
   check("DELETE /:id without token → 401", del.status === 401, `got ${del.status}`);
 }
 
-console.log("=== D. Analysis quota is bypassed in test mode ===");
+console.log("=== D. No server-side analysis limit is enforced ===");
 {
-  // Application-level analysis quota temporarily disabled.
-  // Re-enable after monitoring real usage and establishing production limits.
-  // The API must never return our custom ANALYSIS_LIMIT_REACHED response.
+  // The daily analysis limit is enforced entirely CLIENT-SIDE (localStorage).
+  // The API must never return an application-level analysis-limit response.
   // (A provider-side 429 from Gemini is still valid and expected under load.)
   const ip = `198.51.100.${(ipCounter % 250) + 1}`;
-  let quotaHit = false;
+  let limitHit = false;
   for (let i = 0; i < 12; i += 1) {
     const res = await fetch(`${base}/analysis`, {
       method: "POST",
@@ -166,15 +166,41 @@ console.log("=== D. Analysis quota is bypassed in test mode ===");
         body.code === "ANALYSIS_LIMIT_REACHED" ||
         /analysis limit reached/i.test(body.message ?? "")
       ) {
-        quotaHit = true;
+        limitHit = true;
       }
       break;
     }
   }
   check(
     "no application-level analysis limit is enforced",
-    !quotaHit,
-    "got the custom ANALYSIS_LIMIT_REACHED quota response",
+    !limitHit,
+    "got the custom ANALYSIS_LIMIT_REACHED limit response",
+  );
+}
+
+console.log("=== E. Removed analysis-limit files stay removed ===");
+{
+  const { existsSync } = await import("node:fs");
+  const url = (rel) => new URL(rel, import.meta.url);
+  check(
+    "analysisQuotaMiddleware.js is removed",
+    !existsSync(url("../middleware/analysisQuotaMiddleware.js")),
+  );
+  check(
+    "DailyUsage model is removed",
+    !existsSync(url("../models/DailyUsage.js")),
+  );
+  check(
+    "guestSessionMiddleware.js is removed",
+    !existsSync(url("../middleware/guestSessionMiddleware.js")),
+  );
+  const { env } = await import("../config/env.js");
+  check(
+    "no analysis-limit config remains in env.js",
+    env.guestDailyAnalysisLimit === undefined &&
+      env.authDailyAnalysisLimit === undefined &&
+      env.analysisCooldownMs === undefined &&
+      env.perIpGuestAnalysisLimit === undefined,
   );
 }
 

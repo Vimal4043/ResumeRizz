@@ -2,9 +2,6 @@ import { User } from "../models/User.js";
 import { AppError } from "../utils/errors.js";
 import { signToken } from "../utils/jwt.js";
 import { sendSuccess } from "../utils/response.js";
-import { clearGuestSession } from "../middleware/guestSessionMiddleware.js";
-import { mergeGuestUsage } from "../middleware/analysisQuotaMiddleware.js";
-import { logger } from "../utils/logger.js";
 
 const PASSWORD_MIN = 8;
 const EMAIL_MAX_LENGTH = 254;
@@ -66,8 +63,6 @@ async function issueSession(res, user) {
  * 1. Validate input (server-side email validation is authoritative).
  * 2. If a User with this email already exists → EMAIL_TAKEN.
  * 3. Otherwise create the User immediately and issue a session token.
- *
- * Guest→user quota merge happens (if the request carried a guest session).
  */
 export async function register(req, res, next) {
   try {
@@ -94,21 +89,6 @@ export async function register(req, res, next) {
       passwordHash,
     });
 
-    // Merge guest→user quota BEFORE clearing the guest cookie.
-    if (req.guestSessionId) {
-      try {
-        const transferred = await mergeGuestUsage(req.guestSessionId, user._id.toString());
-        if (transferred > 0) {
-          logger.info(
-            `Merged ${transferred} guest analysis(es) into user ${user._id} after signup`,
-          );
-        }
-      } catch (mergeErr) {
-        console.error("[ auth ] mergeGuestUsage failed after register:", mergeErr.message);
-      }
-      clearGuestSession(res);
-    }
-
     const { token, user: publicUser } = await issueSession(res, user);
     res.setHeader("Cache-Control", "no-store");
     sendSuccess(res, { token, user: publicUser }, "Account created", 201);
@@ -120,8 +100,7 @@ export async function register(req, res, next) {
 /**
  * POST /api/auth/login
  *
- * Normal email + password login. After login, the guest→user quota merge
- * happens (if the request carried a guest session cookie).
+ * Normal email + password login.
  */
 export async function login(req, res, next) {
   try {
@@ -138,22 +117,6 @@ export async function login(req, res, next) {
       );
     }
 
-    // Merge guest→user quota BEFORE clearing the guest cookie.
-    if (req.guestSessionId) {
-      try {
-        const transferred = await mergeGuestUsage(req.guestSessionId, user._id.toString());
-        if (transferred > 0) {
-          logger.info(
-            `Merged ${transferred} guest analysis(es) into user ${user._id} after login`,
-          );
-        }
-      } catch (mergeErr) {
-        // Best-effort: a quota merge failure should not block login.
-        console.error("[ auth ] mergeGuestUsage failed after login:", mergeErr.message);
-      }
-      clearGuestSession(res);
-    }
-
     const { token, user: publicUser } = await issueSession(res, user);
     sendSuccess(res, { token, user: publicUser }, "Logged in");
   } catch (err) {
@@ -165,12 +128,14 @@ export async function login(req, res, next) {
  * POST /api/auth/logout
  *
  * Stateless JWT: the server cannot revoke a token it has issued, so logout is
- * a client-side token discard; this endpoint exists so the client has one
- * canonical call and any future server-side revocation (denylist) slots in.
+ * primarily a client-side token discard; this endpoint exists so the client
+ * has one canonical call and any future server-side revocation (denylist)
+ * slots in.
  */
-export async function logout(_req, res, next) {
+export async function logout(req, res, next) {
   try {
     res.setHeader("Cache-Control", "no-store");
+
     sendSuccess(res, null, "Logged out");
   } catch (err) {
     next(err);

@@ -37,16 +37,14 @@ export const env = {
   // Token lifetime. 7 days is a reasonable default for a web app; tokens are
   // held in memory/localStorage client-side, never in URLs.
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  // ---- Analysis quota & cooldown (application-level) ----
-  // HARDCODED (not env-configurable by design):
-  //   - Guest: 1 successful analysis per guest session per UTC day
-  //   - Authenticated user: 2 successful analyses per account per UTC day
-  guestDailyAnalysisLimit: 1,
-  authDailyAnalysisLimit: 2,
-  // Minimum time between two analyses (any user). Prevents rapid-fire usage
-  // and accidental double-runs; applies to SUCCESSFUL analyses only.
-  analysisCooldownMs:
-    (Number(process.env.ANALYSIS_COOLDOWN_MINUTES) || 10) * 60 * 1000,
+  // NOTE: the daily analysis limit is enforced CLIENT-SIDE only (browser
+  // localStorage, per guest / per account). The server enforces NO analysis
+  // quota and NO cooldown.
+  // Registration throttle (anti account-farming). Applied only to POST
+  // /api/auth/register with a per-IP key.
+  registerLimitCount: Number(process.env.REGISTER_LIMIT_COUNT) || 5,
+  registerLimitWindowMs:
+    Number(process.env.REGISTER_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   // Hard ceiling for one Gemini HTTP attempt (120s). Past this, the attempt is
   // aborted and (for transient errors) retried within the retry budget instead
   // of hanging.

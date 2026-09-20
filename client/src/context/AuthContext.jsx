@@ -51,9 +51,9 @@ export function AuthProvider({ children }) {
   // Any API 401 (expired token) should log the user out app-wide.
   useEffect(() => {
     const onUnauthenticated = () => setUser(null);
-    window.addEventListener("aijh:unauthenticated", onUnauthenticated);
+    window.addEventListener("rrizz:unauthenticated", onUnauthenticated);
     return () =>
-      window.removeEventListener("aijh:unauthenticated", onUnauthenticated);
+      window.removeEventListener("rrizz:unauthenticated", onUnauthenticated);
   }, []);
 
   const refreshUser = useCallback(async () => {

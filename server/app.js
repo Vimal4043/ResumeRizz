@@ -4,19 +4,23 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { rateLimit } from "express-rate-limit";
 import { env } from "./config/env.js";
+import { getClientIp } from "./middleware/clientIp.js";
 import {
   errorMiddleware,
   notFoundMiddleware,
 } from "./middleware/errorMiddleware.js";
-import { guestSessionMiddleware } from "./middleware/guestSessionMiddleware.js";
 import healthRoutes from "./routes/healthRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import analysisRoutes from "./routes/analysisRoutes.js";
 
 const app = express();
 
-// Trust the first proxy hop so rate limiting + IP handling work correctly when
-// the app is deployed behind a reverse proxy (e.g. nginx).
+// trust proxy=1 is used only by logging (morgan) for XFF-aware request logging.
+// All SECURITY-RELEVANT IP decisions — rate-limit keying (app + register
+// limiter) — go through getClientIp()
+// (see middleware/clientIp.js): it trusts the TCP socket peer by default and
+// honors X-Forwarded-For ONLY when the socket peer is private/loopback
+// (Render private-router topology), never for a public direct connection.
 app.set("trust proxy", 1);
 
 // ---------------------------------------------------------------------------
@@ -36,6 +40,8 @@ if (env.nodeEnv !== "test") {
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   limit: 100, // requests per window per IP
+  keyGenerator: (req) => getClientIp(req),
+  skip: () => env.nodeEnv === "test", // test suites drive the app directly
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: {
@@ -44,21 +50,6 @@ const apiLimiter = rateLimit({
   },
 });
 app.use("/api", apiLimiter);
-
-// ---------------------------------------------------------------------------
-// Guest session + quota on every API request
-// ---------------------------------------------------------------------------
-// guestSessionMiddleware must run BEFORE auth middleware so req.guestSessionId
-// is set for unauthenticated requests. It is applied to /api/auth and
-// /api/analysis (NOT /api/health — the health check should not set cookies).
-//
-// The analysisQuota middleware is exported but applied per-route in
-// routes/analysisRoutes.js so it can share ordering with attachOptionalUser
-// and uploadMiddleware. The function is re-exported here for any future global
-// usage; the current route-level wiring is explicit by design.
-
-app.use("/api/auth", guestSessionMiddleware);
-app.use("/api/analysis", guestSessionMiddleware);
 
 // ---------------------------------------------------------------------------
 // API routes → controllers (no business logic lives in these definitions)

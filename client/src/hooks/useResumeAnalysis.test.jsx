@@ -3,6 +3,11 @@ import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { useResumeAnalysis } from "./useResumeAnalysis";
 import * as analysisService from "../services/analysisService";
 import {
+  ANALYSIS_LIMIT_CODE,
+  ANALYSIS_LIMIT_MESSAGE,
+  GUEST_ANALYSIS_USED_KEY,
+} from "../utils/analysisLimit";
+import {
   ANALYSIS_MESSAGES,
   NEUTRAL_MESSAGES,
   messageForStage,
@@ -15,13 +20,15 @@ const file = new File(["resume-bytes"], "resume.pdf", {
 });
 const jd = "x".repeat(50);
 
-// With Math.random() mocked to 0.5, randomInterval() === 3000ms exactly.
-const TICK_MS = 3000;
+// With Math.random() mocked to 0.5, randomInterval() === 4000ms exactly.
+const TICK_MS = 4000;
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.spyOn(Math, "random").mockReturnValue(0.5);
   analysisService.analyzeResume.mockReset();
+  // The daily limit lives in localStorage: isolate every test.
+  localStorage.clear();
 });
 
 afterEach(() => {
@@ -158,5 +165,119 @@ describe("useResumeAnalysis message rotation", () => {
       vi.advanceTimersByTime(TICK_MS * 30);
     });
     expect(result.current.stage).toBe(frozen);
+  });
+});
+
+describe("useResumeAnalysis client-side daily limit", () => {
+  it("F. guest: success blocks the 2nd attempt (no request sent)", async () => {
+    analysisService.analyzeResume.mockResolvedValue({ ok: true });
+    const { result } = renderHook(() => useResumeAnalysis(null));
+    await act(async () => {
+      await result.current.analyze(file, jd);
+    });
+    expect(result.current.status).toBe("success");
+    expect(result.current.limitReached).toBe(true);
+    expect(localStorage.getItem(GUEST_ANALYSIS_USED_KEY)).toBeTruthy();
+
+    const calls = analysisService.analyzeResume.mock.calls.length;
+    await act(async () => {
+      await expect(result.current.analyze(file, jd)).rejects.toThrow(
+        ANALYSIS_LIMIT_MESSAGE,
+      );
+    });
+    expect(result.current.status).toBe("error");
+    expect(result.current.error?.code).toBe(ANALYSIS_LIMIT_CODE);
+    expect(analysisService.analyzeResume.mock.calls.length).toBe(calls);
+  });
+
+  it("G. auth: success blocks the 2nd attempt and writes only the account key", async () => {
+    analysisService.analyzeResume.mockResolvedValue({ ok: true });
+    const { result } = renderHook(() => useResumeAnalysis("acct-1"));
+    await act(async () => {
+      await result.current.analyze(file, jd);
+    });
+    expect(result.current.status).toBe("success");
+    expect(localStorage.getItem("resumerizz_analysis_used_acct-1")).toBeTruthy();
+    expect(localStorage.getItem(GUEST_ANALYSIS_USED_KEY)).toBeNull();
+
+    await act(async () => {
+      await expect(result.current.analyze(file, jd)).rejects.toThrow(
+        ANALYSIS_LIMIT_MESSAGE,
+      );
+    });
+    expect(result.current.error?.code).toBe(ANALYSIS_LIMIT_CODE);
+  });
+
+  it("H. a failed analysis does not consume the limit", async () => {
+    analysisService.analyzeResume.mockRejectedValueOnce(new Error("boom"));
+    const { result } = renderHook(() => useResumeAnalysis("acct-2"));
+    await act(async () => {
+      await expect(result.current.analyze(file, jd)).rejects.toThrow("boom");
+    });
+    expect(result.current.status).toBe("error");
+    expect(localStorage.getItem("resumerizz_analysis_used_acct-2")).toBeNull();
+
+    analysisService.analyzeResume.mockResolvedValueOnce({ ok: true });
+    await act(async () => {
+      await result.current.analyze(file, jd);
+    });
+    expect(result.current.status).toBe("success");
+  });
+
+  it("I. a previous-day entry resets and allows the analysis", async () => {
+    localStorage.setItem(
+      GUEST_ANALYSIS_USED_KEY,
+      JSON.stringify({ used: true, date: "2000-01-01" }),
+    );
+    analysisService.analyzeResume.mockResolvedValue({ ok: true });
+    const { result } = renderHook(() => useResumeAnalysis(null));
+    expect(result.current.limitReached).toBe(false);
+    await act(async () => {
+      await result.current.analyze(file, jd);
+    });
+    expect(result.current.status).toBe("success");
+  });
+
+  it("J. guest and authenticated keys stay separate", async () => {
+    analysisService.analyzeResume.mockResolvedValue({ ok: true });
+    const guest = renderHook(() => useResumeAnalysis(null));
+    await act(async () => {
+      await guest.result.current.analyze(file, jd);
+    });
+    expect(guest.result.current.limitReached).toBe(true);
+
+    const account = renderHook(() => useResumeAnalysis("acct-9"));
+    expect(account.result.current.limitReached).toBe(false);
+    await act(async () => {
+      await account.result.current.analyze(file, jd);
+    });
+    expect(account.result.current.status).toBe("success");
+  });
+
+  it("K. logout/login never resets an account daily flag", async () => {
+    analysisService.analyzeResume.mockResolvedValue({ ok: true });
+    const loggedIn = renderHook(() => useResumeAnalysis("acct-42"));
+    await act(async () => {
+      await loggedIn.result.current.analyze(file, jd);
+    });
+    expect(loggedIn.result.current.limitReached).toBe(true);
+    loggedIn.unmount();
+
+    const asGuest = renderHook(() => useResumeAnalysis(null));
+    expect(asGuest.result.current.limitReached).toBe(false);
+    await act(async () => {
+      await asGuest.result.current.analyze(file, jd);
+    });
+    expect(asGuest.result.current.status).toBe("success");
+    asGuest.unmount();
+
+    const backIn = renderHook(() => useResumeAnalysis("acct-42"));
+    expect(backIn.result.current.limitReached).toBe(true);
+    await act(async () => {
+      await expect(backIn.result.current.analyze(file, jd)).rejects.toThrow(
+        ANALYSIS_LIMIT_MESSAGE,
+      );
+    });
+    expect(backIn.result.current.error?.code).toBe(ANALYSIS_LIMIT_CODE);
   });
 });

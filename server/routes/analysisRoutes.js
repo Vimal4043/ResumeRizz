@@ -6,7 +6,6 @@ import {
   deleteAnalysis,
 } from "../controllers/analysisController.js";
 import { uploadMiddleware } from "../middleware/uploadMiddleware.js";
-import { analysisQuota } from "../middleware/analysisQuotaMiddleware.js";
 import {
   requireAuth,
   attachOptionalUser,
@@ -18,20 +17,17 @@ const router = Router();
 // is present the analysis is saved to that account; guests simply get the
 // result without persistence.
 //
-// Quota order matters:
-//   1. attachOptionalUser — resolves req.user so the quota middleware can split
-//      guest (per-session, DB via DailyUsage) from authenticated (per-account, DB)
-//      limits.
-//   2. analysisQuota — enforces the cooldown and the daily cap for BOTH guests
-//      and authenticated users, BEFORE upload so a rejected request never writes
-//      a temp file. The daily cap counts only SUCCESSFUL analyses (guests:
-//      DB-backed via DailyUsage by guest session ID; authed: Analysis documents),
-//      so validation/AI/cooldown failures never consume quota.
-//   3. uploadMiddleware — only requests that passed quota touch the disk.
+// Order matters:
+//   1. attachOptionalUser — resolves req.user (so the controller can decide
+//      whether to persist the result).
+//   2. uploadMiddleware — parses the multipart PDF into a temp file.
+//   3. analyze — runs the Gemini pipeline.
+//
+// NOTE: the daily analysis limit is enforced CLIENT-SIDE only (localStorage);
+// the server deliberately enforces no analysis quota or cooldown.
 router.post(
   "/",
   attachOptionalUser,
-  analysisQuota,
   uploadMiddleware.single("resume"),
   analyze,
 );
