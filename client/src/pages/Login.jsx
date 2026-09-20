@@ -32,7 +32,7 @@ export default function Login() {
   }
 
   return (
-    <PageContainer title="Log in" subtitle="Welcome back">
+    <PageContainer title="Log in" subtitle="Welcome back" align="center">
       <form
         onSubmit={handleSubmit}
         className="mx-auto w-full max-w-sm space-y-4 rounded-lg border border-border bg-surface p-6"

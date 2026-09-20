@@ -53,6 +53,7 @@ export default function Register() {
     <PageContainer
       title="Create your account"
       subtitle="Save and revisit your analyses"
+      align="center"
     >
       <form
         onSubmit={handleSubmit}
