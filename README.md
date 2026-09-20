@@ -76,7 +76,8 @@ ResumeRizz/
 │   │   ├── services/
 │   │   └── utils/
 │   ├── public/
-│   └── vite.config.js
+│   ├── vite.config.js
+│   └── vercel.json
 ├── server/
 │   ├── controllers/
 │   ├── models/
@@ -85,7 +86,9 @@ ResumeRizz/
 │   ├── middleware/
 │   ├── config/
 │   ├── utils/
-│   └── server.js
+│   ├── app.js
+│   ├── server.js
+│   └── .env.example
 └── README.md
 ```
 
@@ -101,7 +104,7 @@ ResumeRizz/
 
 ```bash
 cd server
-cp .env.example .env
+cp .env.example .env   # then fill in your values
 npm install
 npm run dev
 ```
@@ -154,6 +157,7 @@ The daily analysis limit is enforced in the browser (`localStorage`) — one suc
 | `npm run build` | Production build |
 | `npm run preview` | Preview the production build |
 | `npm run lint` | Lint with oxlint |
+
 ### Server
 
 | Command | Description |
